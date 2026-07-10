@@ -32,5 +32,7 @@ window.chatv2I18n.zh = {
     networkUnstable: '⚠️ 網絡連接不穩定，正在嘗試重新連接...',
     musicPlayFailed: '🎵 音樂播放失敗，請稍後重試',
     startPushToTalk: '開始按住說話',
-    stopPushToTalk: '結束按住說話'
+    stopPushToTalk: '結束按住說話',
+    historyTitle: '歷史對話',
+    historyEmpty: '暫無對話記錄'
 };

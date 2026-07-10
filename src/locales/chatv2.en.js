@@ -32,5 +32,7 @@ window.chatv2I18n.en = {
     networkUnstable: '⚠️ Network connection unstable, trying to reconnect...',
     musicPlayFailed: '🎵 Music playback failed, please try again later',
     startPushToTalk: 'Start push to talk',
-    stopPushToTalk: 'Stop push to talk'
+    stopPushToTalk: 'Stop push to talk',
+    historyTitle: 'Chat History',
+    historyEmpty: 'No conversation history yet'
 };
