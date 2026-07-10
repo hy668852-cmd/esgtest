@@ -19,6 +19,10 @@
             margin: 0;
             padding: 0;
             background: #f1e6aa;
+            background-image: url('/static/images/goody_bg.png');
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat;
             color: #333;
             height: 100vh;
             height: 100dvh; /* 动态视口高度，更适合移动端 */
@@ -54,6 +58,10 @@
             height: 100vh;
             height: 100dvh; /* 动态视口高度 */
             background: #f1e6aa;
+            background-image: url('/static/images/goody_bg.png');
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat;
             position: relative;
             overflow: hidden;
         }
@@ -717,7 +725,7 @@
                 preferredFacingMode: 'user', // 'user' 前置，'environment' 后置
                 videoInputDevices: [], // 可用的视频输入设备
                 // 语音模式相关
-                voiceMode: 'continuous', // 'continuous' 或 'push-to-talk'
+                voiceMode: 'push-to-talk', // 'continuous' 或 'push-to-talk'，默认按住说话
                 isPushToTalkActive: false, // 是否正在按住说话
                 audioTrackEnabled: true, // 音频轨道是否启用
                 // 触觉反馈相关

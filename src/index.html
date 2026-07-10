@@ -4,9 +4,9 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>XiaoZhi WebRTC - 实时语音聊天应用</title>
-    <meta name="description" content="XiaoZhi WebRTC 是一个基于 WebRTC 技术的实时语音聊天应用，支持多种角色选择和自定义配置，提供流畅的语音交互体验。">
-    <meta name="keywords" content="WebRTC,语音聊天,实时通信,语音交互,在线聊天,WebRTC应用">
+    <title>XiaoZhi WebRTC - 實時語音聊天應用</title>
+    <meta name="description" content="XiaoZhi WebRTC 是一個基於 WebRTC 技術的實時語音聊天應用，支持多種角色選擇和自定義配置，提供流暢的語音交互體驗。">
+    <meta name="keywords" content="WebRTC,語音聊天,實時通信,語音交互,在線聊天,WebRTC應用">
     <meta name="author" content="dairoot">
 
     <link rel="icon" type="image/x-icon" href="static/favicon.ico">
@@ -1104,7 +1104,7 @@
             el: '#app',
             data: {
                 roles: [
-                    { id: 1, name: 'Goody智能助手', nameEn: 'Goody Assistant', description: '你的智能助手伙伴', descriptionEn: 'Your intelligent assistant', macAddress: '90:e5:b1:cc:72:64', image: '/static/images/stable.gif' }
+                    { id: 1, name: 'Goody智能助手', nameEn: 'Goody Assistant', description: '你的智能助手夥伴', descriptionEn: 'Your intelligent assistant', macAddress: '90:e5:b1:cc:72:64', image: '/static/images/stable.gif' }
                 ],
                 currentIndex: 0,
                 macAddress: '',
@@ -1115,7 +1115,7 @@
                 audioOutputDevices: [],
                 selectedSpeakerDeviceId: '',
                 isLoadingSpeakers: true,
-                voiceMode: 'continuous', // 'continuous' 或 'push-to-talk'
+                voiceMode: 'push-to-talk', // 'continuous' 或 'push-to-talk'，默认按住说话
                 showSettings: false,
                 // 拖动相关
                 isDragging: false,
