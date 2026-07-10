@@ -18,8 +18,8 @@ class AudioFaceSwapper(AudioStreamTrack):
         self.sample_rate = 48000
         self.xiaozhi = xiaozhi
 
-        # 初始化回声消除管理器
-        self.echo_manager = EchoCancellationManager(enable_echo_cancellation=True, enable_debug=True)
+        # 初始化回声消除管理器（禁用服务端回声消除，浏览器端已有足够的回声消除能力）
+        self.echo_manager = EchoCancellationManager(enable_echo_cancellation=False, enable_debug=False)
 
     def empty_frame(self):
         samples = np.zeros(960, dtype=np.float32)
