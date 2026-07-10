@@ -1,0 +1,1412 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>XiaoZhi WebRTC - 实时语音聊天应用</title>
+    <meta name="description" content="XiaoZhi WebRTC 是一个基于 WebRTC 技术的实时语音聊天应用，支持多种角色选择和自定义配置，提供流畅的语音交互体验。">
+    <meta name="keywords" content="WebRTC,语音聊天,实时通信,语音交互,在线聊天,WebRTC应用">
+    <meta name="author" content="dairoot">
+
+    <link rel="icon" type="image/x-icon" href="static/favicon.ico">
+    <link rel="manifest" href="/static/manifest.webmanifest">
+    <meta name="theme-color" content="#1976d2">
+    <script src="static/js/vue.min.js"></script>
+    <!-- i18n translations -->
+    <script src="locales/index.zh.js"></script>
+    <script src="locales/index.en.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            color: #333;
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(102, 126, 234, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            opacity: 0.5;
+        }
+
+        #app {
+            height: 100vh;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .role-selection-container {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        .role-title {
+            font-size: 36px;
+            font-weight: 600;
+            margin-top: 60px;
+            margin-bottom: 80px;
+            text-align: center;
+            color: #333;
+            text-shadow: 0 2px 20px rgba(0,0,0,0.05);
+            letter-spacing: 2px;
+        }
+
+        .carousel-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            max-width: 700px;
+            margin: 0 auto 60px;
+            position: relative;
+            cursor: grab;
+            user-select: none;
+        }
+
+        .carousel-container:active {
+            cursor: grabbing;
+        }
+
+        .role-options {
+            display: flex;
+            align-items: center;
+            position: relative;
+            min-height: 180px;
+        }
+
+        .role-option {
+            width: 250px;
+            height: 250px;
+            border-radius: 50%;
+            -webkit-border-radius: 50%;
+            margin: 0 15px;
+            transition: all 0.3s ease;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            flex-shrink: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            -webkit-overflow-scrolling: touch;
+            background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.95) 100%);
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(10px);
+            position: relative;
+        }
+
+        .role-option::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: 50%;
+            padding: 2px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.6), rgba(255,255,255,0.2));
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask-composite: exclude;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .role-option.center::before {
+            opacity: 1;
+        }
+
+        .role-option.left,
+        .role-option.right {
+            transform: scale(0.55);
+            opacity: 0.4;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .role-option.center {
+            transform: scale(1.05);
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
+        }
+
+        .role-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+            -webkit-border-radius: 50%;
+            filter: drop-shadow(0 0 20px rgba(0, 0, 0, 0.3));
+            transition: all 0.3s ease;
+            pointer-events: none;
+            -webkit-user-drag: none;
+            display: block;
+            border: none;
+            outline: none;
+        }
+
+        .role-option.left .role-image,
+        .role-option.right .role-image {
+            /* filter: blur(2px) drop-shadow(0 0 10px rgba(0, 0, 0, 0.2)); */
+            opacity: 0.9;
+        }
+
+        .role-option.center .role-image {
+            filter: drop-shadow(0 0 25px rgba(0, 0, 0, 0.4));
+        }
+
+        .details-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto 20px;
+            position: relative;
+        }
+
+        .carousel-navigation {
+            position: relative;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            background: #fff;
+            border-radius: 50%;
+            backdrop-filter: blur(10px);
+            border: 2px solid #e0e0e0;
+            transition: all 0.3s ease;
+        }
+
+        .carousel-navigation:hover {
+            background: #fff;
+            transform: scale(1.1);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+        }
+
+        .carousel-navigation:active {
+            transform: scale(0.95);
+        }
+
+        .arrow {
+            font-size: 20px;
+            /* color: #667eea; */
+            line-height: 1;
+            text-shadow: none;
+        }
+
+        .role-details {
+            text-align: center;
+            margin-bottom: 0;
+            padding: 0 30px;
+            flex: 1;
+            height: 110px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+        }
+
+        .role-name {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            height: 38px;
+            line-height: 38px;
+            color: #333;
+            text-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+            letter-spacing: 1px;
+        }
+
+        .role-description {
+            color: #666;
+            font-size: 18px;
+            max-width: 450px;
+            margin: 0 auto;
+            height: 72px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .role-description-input {
+            max-width: 450px;
+            margin: 0 auto;
+            height: 72px;
+        }
+
+        .role-mac-input {
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            color: #333;
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-size: 16px;
+            width: 100%;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+            text-align: center;
+            letter-spacing: 2px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            backdrop-filter: blur(10px);
+        }
+
+        .role-mac-input::placeholder {
+            color: rgba(0, 0, 0, 0.4);
+            letter-spacing: normal;
+        }
+
+        .role-mac-input:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.8);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2), 0 0 0 4px rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 1);
+        }
+
+        .role-mac-input.error {
+            border-color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.15);
+            box-shadow: 0 8px 24px rgba(255, 107, 107, 0.3);
+        }
+
+        .role-mac-error {
+            color: #ff4757;
+            font-size: 13px;
+            margin-top: 8px;
+            text-align: center;
+            min-height: 28px;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease;
+            text-shadow: none;
+            font-weight: 500;
+        }
+
+        .role-mac-error.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .pagination {
+            margin-bottom: 20px;
+            color: #666;
+            font-size: 18px;
+            font-weight: 500;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .start-button {
+            background: rgba(255, 255, 255, 0.95);
+            /* color: #667eea; */
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50px;
+            padding: 18px 100px;
+            font-size: 18px;
+            cursor: pointer;
+            margin-bottom: 40px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+            letter-spacing: 1px;
+            backdrop-filter: blur(10px);
+        }
+
+        .start-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            background: rgba(255, 255, 255, 1);
+            box-shadow: 0 16px 56px rgba(0, 0, 0, 0.4);
+            border-color: rgba(255, 255, 255, 0.8);
+        }
+
+        .start-button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        .start-button:disabled {
+            background: rgba(220, 220, 220, 0.85);
+            color: #666;
+            cursor: not-allowed;
+            opacity: 0.75;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            border-color: rgba(200, 200, 200, 0.6);
+        }
+
+        .microphone-section {
+            margin-top: 1.5rem;
+        }
+
+        .speaker-section {
+            margin-top: 1.5rem;
+        }
+
+        .microphone-select {
+            background: #fff;
+            border: 2px solid #e0e0e0;
+            color: #333;
+            padding: 14px 20px;
+            border-radius: 12px;
+            font-size: 15px;
+            width: 100%;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            background-size: 18px;
+            padding-right: 48px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .microphone-select:hover {
+            border-color: #bbb;
+        }
+
+        .microphone-select:focus {
+            outline: none;
+            background: #fff;
+            border-color: #667eea;
+            box-shadow: 0 2px 12px rgba(102, 126, 234, 0.2), 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .microphone-select option {
+            background: #fff;
+            color: #333;
+            padding: 12px;
+        }
+
+        .push-to-talk-section {
+            margin-top: 1.5rem;
+        }
+
+        .voice-mode-options {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .voice-mode-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            padding: 10px 16px;
+            border-radius: 10px;
+            transition: all 0.2s ease;
+            background: #f5f5f5;
+            border: 2px solid transparent;
+        }
+
+        .voice-mode-option:hover {
+            background: #eee;
+            border-color: #ddd;
+        }
+
+        .voice-mode-option:has(.voice-mode-radio:checked) {
+            background: rgba(102, 126, 234, 0.1);
+            border-color: #667eea;
+        }
+
+        .voice-mode-radio {
+            width: 18px;
+            height: 18px;
+            accent-color: #667eea;
+            cursor: pointer;
+        }
+
+        .voice-mode-label {
+            color: #555;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .author-footer {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(0, 0, 0, 0.06);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .github-link {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #888;
+            transition: all 0.2s ease;
+            font-size: 13px;
+            font-weight: 400;
+        }
+
+        .github-link:hover {
+            background: rgba(0, 0, 0, 0.04);
+            color: #555;
+        }
+
+        .github-icon {
+            flex-shrink: 0;
+            opacity: 0.7;
+        }
+
+        .github-link:hover .github-icon {
+            opacity: 1;
+        }
+
+        .github-text {
+            white-space: nowrap;
+        }
+
+        /* Language switcher */
+        .language-switcher {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 10px 18px;
+            border-radius: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.15),
+                        0 1px 3px rgba(0, 0, 0, 0.1),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.6);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 14px;
+            font-weight: 600;
+            color: #667eea;
+            min-height: 40px;
+            line-height: 1;
+            white-space: nowrap;
+        }
+
+        .language-switcher:hover {
+            background: rgba(255, 255, 255, 0.95);
+            border-color: rgba(102, 126, 234, 0.3);
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 8px 30px rgba(102, 126, 234, 0.25),
+                        0 2px 6px rgba(0, 0, 0, 0.1),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.7);
+        }
+
+        .language-switcher:active {
+            transform: translateY(0) scale(0.98);
+            box-shadow: 0 2px 10px rgba(102, 126, 234, 0.2),
+                        inset 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .initial-actions {
+            margin-top: 24px;
+        }
+
+        .initial-control-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+            letter-spacing: 0.5px;
+        }
+
+        .initial-control-button:hover {
+            background: linear-gradient(135deg, #5a6bd8 0%, #6a4292 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(102, 126, 234, 0.4);
+        }
+
+        .initial-control-button:active {
+            transform: translateY(0);
+        }
+
+        .button-icon {
+            font-size: 1.2rem;
+        }
+
+        /* Settings button */
+        .settings-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 10px 18px;
+            border-radius: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.15),
+                        0 1px 3px rgba(0, 0, 0, 0.1),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.6);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 14px;
+            font-weight: 600;
+            color: #667eea;
+            min-height: 40px;
+            line-height: 1;
+            white-space: nowrap;
+        }
+
+        .settings-button:hover {
+            background: rgba(255, 255, 255, 0.95);
+            border-color: rgba(102, 126, 234, 0.3);
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 8px 30px rgba(102, 126, 234, 0.25),
+                        0 2px 6px rgba(0, 0, 0, 0.1),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.7);
+        }
+
+        .settings-button:active {
+            transform: translateY(0) scale(0.98);
+            box-shadow: 0 2px 10px rgba(102, 126, 234, 0.2),
+                        inset 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Settings modal/panel */
+        .settings-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(8px);
+            z-index: 1100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .settings-panel {
+            margin: 0 16px;
+            width: 480px;
+            max-width: calc(100% - 32px);
+            background: rgba(255, 255, 255, 0.95);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 24px;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, 0.3);
+            padding: 32px;
+            backdrop-filter: blur(20px);
+        }
+
+        .settings-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+
+        .settings-title {
+            color: #333;
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .settings-close {
+            background: transparent;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+            padding: 8px 12px;
+            border-radius: 12px;
+            transition: all 0.2s ease;
+            line-height: 1;
+        }
+
+        .settings-close:hover {
+            background: rgba(0, 0, 0, 0.08);
+            color: #333;
+        }
+
+        .settings-actions {
+            margin-top: 24px;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .input-label {
+            color: #555;
+            font-size: 15px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        @media screen and (max-width: 768px) {
+            /* 移动设备上减少视觉效果以提升性能 */
+            body::before {
+                display: none;
+            }
+
+            body {
+                height: 100vh;
+                height: 100dvh; /* 使用动态视口高度 */
+                overflow: hidden;
+                position: fixed;
+                width: 100%;
+                background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            }
+
+            #app {
+                height: 100vh;
+                height: 100dvh;
+                overflow: hidden;
+                background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            }
+
+            .role-selection-container {
+                height: 100vh;
+                height: 100dvh;
+                padding: 10px 20px;
+                justify-content: space-between;
+                overflow: hidden;
+                background: transparent;
+            }
+
+            .role-option {
+                width: 200px;
+                height: 200px;
+                margin: 0 10px;
+                border-radius: 50%;
+                -webkit-border-radius: 50%;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+                backdrop-filter: none;
+                -webkit-backdrop-filter: none;
+                overflow: hidden;
+                -webkit-overflow-scrolling: touch;
+                background: transparent;
+                border: none;
+                clip-path: circle(50%);
+                -webkit-clip-path: circle(50%);
+            }
+
+            .role-option.center {
+                box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+            }
+
+            .role-option.left,
+            .role-option.right {
+                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+            }
+
+            .role-image {
+                border-radius: 50%;
+                -webkit-border-radius: 50%;
+                display: block;
+                border: none;
+                outline: none;
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                clip-path: circle(50%);
+                -webkit-clip-path: circle(50%);
+            }
+
+            .role-title {
+                font-size: 24px;
+                margin-top: calc(20px + env(safe-area-inset-top, 0px) + 50px);
+                margin-bottom: 20px;
+                padding-top: 10px;
+            }
+
+            .carousel-container {
+                margin: 0 auto 20px;
+                flex-shrink: 0;
+            }
+
+            .role-name {
+                font-size: 22px;
+                margin-bottom: 8px;
+                height: 32px;
+                line-height: 32px;
+            }
+
+            .role-description {
+                font-size: 14px;
+                padding: 0 10px;
+                height: auto;
+                min-height: 40px;
+            }
+
+            .role-description-input {
+                height: auto;
+                min-height: 40px;
+            }
+
+            .role-mac-input {
+                padding: 8px 14px;
+                font-size: 14px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            }
+
+            .role-mac-error {
+                font-size: 11px;
+                margin-top: 4px;
+                min-height: 20px;
+            }
+
+            .details-container {
+                margin: 0 auto 10px;
+                flex-shrink: 0;
+            }
+
+            .role-details {
+                height: auto;
+                min-height: 80px;
+                padding: 0 20px;
+            }
+
+            .start-button {
+                padding: 14px 60px;
+                font-size: 15px;
+                margin-bottom: 20px;
+                box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+                flex-shrink: 0;
+            }
+
+            .carousel-navigation {
+                width: 40px;
+                height: 40px;
+            }
+
+            .arrow {
+                font-size: 18px;
+            }
+
+            .pagination {
+                margin-bottom: 15px;
+                font-size: 15px;
+                flex-shrink: 0;
+            }
+
+            .action-buttons {
+                flex-shrink: 0;
+            }
+
+            .settings-panel {
+                margin: 0 12px;
+                width: calc(100% - 24px);
+                padding: 24px;
+                box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+            }
+
+            .github-link {
+                font-size: 12px;
+                padding: 6px 10px;
+            }
+
+            .settings-button {
+                top: 12px;
+                right: 12px;
+                padding: 10px 16px;
+                font-size: 13px;
+            }
+
+            .settings-title {
+                font-size: 20px;
+            }
+        }
+
+        @media screen and (max-width: 375px) {
+            .role-title {
+                font-size: 20px;
+                margin-top: calc(15px + env(safe-area-inset-top, 0px) + 50px);
+                margin-bottom: 15px;
+                padding-top: 10px;
+            }
+
+            .role-option {
+                width: 150px;
+                height: 150px;
+                margin: 0 8px;
+                border-radius: 50%;
+                -webkit-border-radius: 50%;
+                backdrop-filter: none;
+                -webkit-backdrop-filter: none;
+                overflow: hidden;
+                -webkit-overflow-scrolling: touch;
+                background: transparent;
+                border: none;
+                clip-path: circle(50%);
+                -webkit-clip-path: circle(50%);
+            }
+
+            .role-image {
+                border-radius: 50%;
+                -webkit-border-radius: 50%;
+                display: block;
+                border: none;
+                outline: none;
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                clip-path: circle(50%);
+                -webkit-clip-path: circle(50%);
+            }
+
+            .role-name {
+                font-size: 18px;
+                height: 28px;
+                line-height: 28px;
+                margin-bottom: 6px;
+            }
+
+            .role-description {
+                font-size: 12px;
+                min-height: 36px;
+            }
+
+            .role-details {
+                min-height: 70px;
+                padding: 0 15px;
+            }
+
+            .start-button {
+                padding: 12px 50px;
+                font-size: 14px;
+                margin-bottom: 15px;
+            }
+
+            .carousel-navigation {
+                width: 35px;
+                height: 35px;
+            }
+
+            .arrow {
+                font-size: 16px;
+            }
+
+            .pagination {
+                margin-bottom: 10px;
+                font-size: 14px;
+            }
+
+            .role-mac-input {
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+
+            .role-mac-error {
+                font-size: 10px;
+                margin-top: 4px;
+                min-height: 18px;
+            }
+
+            .carousel-container {
+                margin-bottom: 15px;
+            }
+
+            .details-container {
+                margin-bottom: 8px;
+            }
+
+            .settings-button {
+                padding: 10px 16px;
+                font-size: 13px;
+            }
+
+            .settings-panel {
+                padding: 20px;
+            }
+
+            .github-link {
+                font-size: 11px;
+                padding: 6px 8px;
+            }
+
+            .github-icon {
+                width: 14px;
+                height: 14px;
+            }
+
+            .language-switcher {
+                top: 12px;
+                left: 12px;
+                padding: 10px 16px;
+                font-size: 13px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <button class="language-switcher" @click="toggleLanguage">
+            <span>{{ currentLanguage === 'zh' ? '🇨🇳' : '🇺🇸' }}</span>
+            <span>{{ currentLanguage === 'zh' ? '中文' : 'English' }}</span>
+        </button>
+        <button class="settings-button" @click="showSettings = true">
+            <span class="button-icon">⚙️</span>
+            <span>{{ t('settings') }}</span>
+        </button>
+
+        <div v-if="showSettings" class="settings-modal" @click.self="showSettings = false">
+            <div class="settings-panel" role="dialog" aria-modal="true" :aria-label="t('settings')">
+                <div class="settings-header">
+                    <div class="settings-title">{{ t('settings') }}</div>
+                    <button class="settings-close" @click="showSettings = false" :aria-label="t('closeSettings')">✕</button>
+                </div>
+                <div class="settings-content">
+                    <div class="microphone-section">
+                        <div class="input-label">{{ t('microphoneSelection') }}</div>
+                        <select v-model="selectedAudioDeviceId" class="microphone-select" :disabled="isLoadingMicrophones">
+                            <option value="">{{ t('autoSelectMicrophone') }}</option>
+                            <option v-for="device in audioInputDevices"
+                                    :key="device.deviceId"
+                                    :value="device.deviceId">
+                                {{ device.label || t('microphone') + ' ' + device.deviceId.slice(0, 8) }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="speaker-section">
+                        <div class="input-label">{{ t('speakerSelection') }}</div>
+                        <select v-model="selectedSpeakerDeviceId" class="microphone-select" :disabled="isLoadingSpeakers">
+                            <option value="">{{ t('autoSelectSpeaker') }}</option>
+                            <option v-for="device in audioOutputDevices"
+                                    :key="device.deviceId"
+                                    :value="device.deviceId">
+                                {{ device.label || t('speaker') + ' ' + device.deviceId.slice(0, 8) }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="push-to-talk-section">
+                        <div class="input-label">{{ t('voiceMode') }}</div>
+                        <div class="voice-mode-options">
+                            <label class="voice-mode-option">
+                                <input type="radio" v-model="voiceMode" value="continuous" class="voice-mode-radio">
+                                <span class="voice-mode-label">{{ t('continuousConversation') }}</span>
+                            </label>
+                            <label class="voice-mode-option">
+                                <input type="radio" v-model="voiceMode" value="push-to-talk" class="voice-mode-radio">
+                                <span class="voice-mode-label">{{ t('pushToTalk') }}</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-actions">
+                    <button class="initial-control-button" @click="showSettings = false">{{ t('done') }}</button>
+                </div>
+                <div class="author-footer">
+                    <a href="https://github.com/dairoot/xiaozhi-webrtc" target="_blank" rel="noopener noreferrer" class="github-link">
+                        <svg class="github-icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+                            <path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+                        </svg>
+                        <span class="github-text">{{ t('author') }}：dairoot</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="role-selection-container">
+            <div class="role-title">{{ t('selectRole') }}</div>
+
+            <div class="carousel-container"
+                 @mousedown="handleDragStart"
+                 @mousemove="handleDragMove"
+                 @mouseup="handleDragEnd"
+                 @mouseleave="handleDragEnd"
+                 @touchstart="handleTouchStart"
+                 @touchmove="handleTouchMove"
+                 @touchend="handleTouchEnd">
+                <div class="role-options">
+                    <div v-for="(role, index) in displayRoles" :key="role.id" :class="getRoleClass(index)">
+                        <img :src="role.image" class="role-image" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="details-container">
+                <div class="role-details">
+                    <div class="role-name">{{ getRoleName(currentRole) }}</div>
+                    <div class="role-description-input">
+                        <input type="text"
+                               class="role-mac-input"
+                               v-model="macAddress"
+                               :placeholder="t('enterMacAddress')"
+                               :class="{ 'error': macAddressError }"
+                               @input="validateMacAddress">
+                        <div class="role-mac-error" :class="{ 'visible': macAddressError }">
+                            {{ t('invalidMacAddressFormat') }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="start-button" @click="goChat()" :disabled="isStartButtonDisabled">{{ t('startChat') }}</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+                navigator.serviceWorker.register('/static/service-worker.js').catch(function (e) {
+                    console.log('ServiceWorker registration failed:', e);
+                });
+            });
+        }
+        new Vue({
+            el: '#app',
+            data: {
+                roles: [
+                    { id: 1, name: 'Goody智能助手', nameEn: 'Goody Assistant', description: '你的智能助手伙伴', descriptionEn: 'Your intelligent assistant', macAddress: '90:e5:b1:cc:72:64', image: '/static/images/stable.gif' }
+                ],
+                currentIndex: 0,
+                macAddress: '',
+                macAddressError: false,
+                audioInputDevices: [],
+                selectedAudioDeviceId: '',
+                isLoadingMicrophones: true,
+                audioOutputDevices: [],
+                selectedSpeakerDeviceId: '',
+                isLoadingSpeakers: true,
+                voiceMode: 'continuous', // 'continuous' 或 'push-to-talk'
+                showSettings: false,
+                // 拖动相关
+                isDragging: false,
+                dragStartX: 0,
+                dragCurrentX: 0,
+                dragThreshold: 50, // 拖动阈值（像素）
+                // 国际化
+                currentLanguage: 'zh', // 'zh' 或 'en'
+                i18n: { zh: {}, en: {} } // 从外部文件加载
+            },
+            computed: {
+                currentRole() {
+                    return this.roles[this.currentIndex];
+                },
+                displayRoles() {
+                    const result = [];
+
+                    if (this.roles.length === 1) {
+                        return [this.roles[0]];
+                    }
+
+                    if (this.roles.length >= 2) {
+                        // Left role (previous)
+                        const prevIndex = this.currentIndex > 0 ? this.currentIndex - 1 : this.roles.length - 1;
+                        result.push(this.roles[prevIndex]);
+
+                        // Current role
+                        result.push(this.roles[this.currentIndex]);
+
+                        // Add next role only if we have more than 2 roles
+                        if (this.roles.length > 2) {
+                            const nextIndex = (this.currentIndex + 1) % this.roles.length;
+                            result.push(this.roles[nextIndex]);
+                        }
+                    }
+
+                    return result;
+                },
+                isStartButtonDisabled() {
+                    // 始终验证MAC地址
+                    return !this.macAddress || this.macAddressError;
+                }
+            },
+            mounted() {
+                // 初始化国际化翻译
+                this.i18n = {
+                    zh: window.indexI18n?.zh || {},
+                    en: window.indexI18n?.en || {}
+                };
+
+                // 从本地存储加载设置
+                try {
+                    const savedLanguage = localStorage.getItem('language');
+                    if (savedLanguage && (savedLanguage === 'zh' || savedLanguage === 'en')) {
+                        this.currentLanguage = savedLanguage;
+                    } else {
+                        const urlLang = new URLSearchParams(window.location.search).get('lang');
+                        if (urlLang) {
+                            this.currentLanguage = urlLang.startsWith('zh') ? 'zh' : 'en';
+                        } else {
+                            const browserLang = navigator.language || navigator.userLanguage;
+                            this.currentLanguage = browserLang.startsWith('zh') ? 'zh' : 'en';
+                        }
+                    }
+
+                    const savedMac = localStorage.getItem('macAddress');
+                    const savedAudio = localStorage.getItem('selectedAudioDeviceId');
+                    const savedSpeaker = localStorage.getItem('selectedSpeakerDeviceId');
+                    const savedVoiceMode = localStorage.getItem('voiceMode');
+                    const savedRoleIndex = localStorage.getItem('selectedRoleIndex');
+
+                    // 先设置角色索引
+                    if (savedRoleIndex) {
+                        const index = parseInt(savedRoleIndex, 10);
+                        if (index >= 0 && index < this.roles.length) {
+                            this.currentIndex = index;
+                        }
+                    }
+
+                    // 根据角色和语言设置MAC地址
+                    this.updateMacAddressFromRole();
+
+                    if (savedAudio) this.selectedAudioDeviceId = savedAudio;
+                    if (savedSpeaker) this.selectedSpeakerDeviceId = savedSpeaker;
+                    if (savedVoiceMode) this.voiceMode = savedVoiceMode;
+
+                    this.validateMacAddress();
+                } catch (e) { /* 忽略本地存储错误 */ }
+                this.enumerateAudioDevices();
+            },
+            watch: {
+                currentLanguage(newVal) {
+                    try { localStorage.setItem('language', newVal); } catch (e) {}
+                    // 语言切换时更新MAC地址
+                    this.updateMacAddressFromRole();
+                },
+                currentIndex(newVal) {
+                    try { localStorage.setItem('selectedRoleIndex', newVal.toString()); } catch (e) {}
+                    // 角色切换时更新MAC地址
+                    this.updateMacAddressFromRole();
+                },
+                macAddress(newVal) {
+                    try { localStorage.setItem('macAddress', newVal || ''); } catch (e) {}
+                },
+                selectedAudioDeviceId(newVal) {
+                    try { localStorage.setItem('selectedAudioDeviceId', newVal || ''); } catch (e) {}
+                },
+                selectedSpeakerDeviceId(newVal) {
+                    try { localStorage.setItem('selectedSpeakerDeviceId', newVal || ''); } catch (e) {}
+                },
+                voiceMode(newVal) {
+                    try { localStorage.setItem('voiceMode', newVal || 'continuous'); } catch (e) {}
+                }
+            },
+            methods: {
+                t(key) {
+                    return this.i18n[this.currentLanguage][key] || key;
+                },
+                toggleLanguage() {
+                    this.currentLanguage = this.currentLanguage === 'zh' ? 'en' : 'zh';
+                },
+                getRoleName(role) {
+                    return this.currentLanguage === 'zh' ? role.name : (role.nameEn || role.name);
+                },
+                getRoleDescription(role) {
+                    return this.currentLanguage === 'zh' ? role.description : (role.descriptionEn || role.description);
+                },
+                getRoleMacAddress(role) {
+                    if (!role) return '';
+                    return role.macAddress || '';
+                },
+                updateMacAddressFromRole() {
+                    const macAddr = this.getRoleMacAddress(this.currentRole);
+                    if (macAddr) {
+                        this.macAddress = macAddr;
+                        this.validateMacAddress();
+                    } else {
+                        this.macAddress = '';
+                        this.macAddressError = false;
+                    }
+                },
+                getRoleClass(index) {
+                    if (this.displayRoles.length === 1) {
+                        return 'role-option center active';
+                    }
+
+                    if (this.displayRoles.length === 2) {
+                        return index === 0 ? 'role-option left' : 'role-option center active';
+                    }
+
+                    if (index === 0) return 'role-option left';
+                    if (index === 1) return 'role-option center active';
+                    return 'role-option right';
+                },
+                nextRole() {
+                    this.currentIndex = (this.currentIndex + 1) % this.roles.length;
+                },
+                prevRole() {
+                    this.currentIndex = this.currentIndex > 0 ? this.currentIndex - 1 : this.roles.length - 1;
+                },
+                goChat() {
+                    // 设置已存入 localStorage，直接跳转
+                    window.location.href = '/chatv2';
+                },
+                validateMacAddress() {
+                    this.formatMacAddress();
+                    const macAddressPattern = /^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/;
+                    // 确保始终为布尔值，避免出现空字符串导致按钮被视为禁用
+                    this.macAddressError = (!!this.macAddress) && !macAddressPattern.test(this.macAddress);
+                },
+                formatMacAddress() {
+                    if (!this.macAddress) {
+                        this.macAddressError = false;
+                        return;
+                    }
+                    let cleaned = this.macAddress.replace(/[^0-9A-Fa-f]/g, '');
+                    if (cleaned.length > 12) {
+                        cleaned = cleaned.substring(0, 12);
+                    }
+                    let formatted = '';
+                    for (let i = 0; i < cleaned.length; i += 2) {
+                        if (i > 0) formatted += ':';
+                        formatted += cleaned.substring(i, i + 2);
+                    }
+                    this.macAddress = formatted.toUpperCase();
+                },
+                async enumerateAudioDevices() {
+                    try {
+                        // 首先请求麦克风权限以获取设备标签
+                        await navigator.mediaDevices.getUserMedia({ audio: true });
+
+                        const devices = await navigator.mediaDevices.enumerateDevices();
+                        this.audioInputDevices = devices.filter(d => d.kind === 'audioinput');
+                        this.audioOutputDevices = devices.filter(d => d.kind === 'audiooutput');
+
+                        console.log('可用音频输入设备:', this.audioInputDevices.map(d => ({
+                            deviceId: d.deviceId,
+                            label: d.label || '未知设备'
+                        })));
+
+                        console.log('可用音频输出设备:', this.audioOutputDevices.map(d => ({
+                            deviceId: d.deviceId,
+                            label: d.label || '未知设备'
+                        })));
+
+                        // 如果没有选择设备且存在音频设备，选择第一个
+                        if (!this.selectedAudioDeviceId && this.audioInputDevices.length > 0) {
+                            this.selectedAudioDeviceId = this.audioInputDevices[0].deviceId;
+                        }
+
+                        if (!this.selectedSpeakerDeviceId && this.audioOutputDevices.length > 0) {
+                            this.selectedSpeakerDeviceId = this.audioOutputDevices[0].deviceId;
+                        }
+                    } catch (e) {
+                        console.warn('枚举音频设备失败:', e);
+                        // 即使权限被拒绝，也尝试枚举设备（但可能没有标签）
+                        try {
+                            const devices = await navigator.mediaDevices.enumerateDevices();
+                            this.audioInputDevices = devices.filter(d => d.kind === 'audioinput' && d.deviceId !== '');
+                            this.audioOutputDevices = devices.filter(d => d.kind === 'audiooutput' && d.deviceId !== '');
+                        } catch (enumError) {
+                            console.warn('设备枚举失败:', enumError);
+                        }
+                    } finally {
+                        this.isLoadingMicrophones = false;
+                        this.isLoadingSpeakers = false;
+                    }
+                },
+                // 鼠标拖动事件
+                handleDragStart(e) {
+                    this.isDragging = true;
+                    this.dragStartX = e.clientX;
+                    this.dragCurrentX = e.clientX;
+                },
+                handleDragMove(e) {
+                    if (!this.isDragging) return;
+                    this.dragCurrentX = e.clientX;
+                },
+                handleDragEnd(e) {
+                    if (!this.isDragging) return;
+
+                    const dragDistance = this.dragCurrentX - this.dragStartX;
+
+                    // 根据拖动距离和方向切换角色
+                    if (Math.abs(dragDistance) > this.dragThreshold) {
+                        if (dragDistance > 0) {
+                            // 向右拖动，显示上一个角色
+                            this.prevRole();
+                        } else {
+                            // 向左拖动，显示下一个角色
+                            this.nextRole();
+                        }
+                    }
+
+                    this.isDragging = false;
+                    this.dragStartX = 0;
+                    this.dragCurrentX = 0;
+                },
+                // 触摸事件（移动端支持）
+                handleTouchStart(e) {
+                    this.isDragging = true;
+                    this.dragStartX = e.touches[0].clientX;
+                    this.dragCurrentX = e.touches[0].clientX;
+                },
+                handleTouchMove(e) {
+                    if (!this.isDragging) return;
+                    this.dragCurrentX = e.touches[0].clientX;
+                },
+                handleTouchEnd(e) {
+                    if (!this.isDragging) return;
+
+                    const dragDistance = this.dragCurrentX - this.dragStartX;
+
+                    // 根据拖动距离和方向切换角色
+                    if (Math.abs(dragDistance) > this.dragThreshold) {
+                        if (dragDistance > 0) {
+                            // 向右拖动，显示上一个角色
+                            this.prevRole();
+                        } else {
+                            // 向左拖动，显示下一个角色
+                            this.nextRole();
+                        }
+                    }
+
+                    this.isDragging = false;
+                    this.dragStartX = 0;
+                    this.dragCurrentX = 0;
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>

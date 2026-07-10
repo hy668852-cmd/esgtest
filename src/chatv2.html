@@ -1,0 +1,2348 @@
+<!DOCTYPE html>
+<html style="overflow: hidden; position: fixed; width: 100%; height: 100%;">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>XiaoZhi WebRTC</title>
+    <link rel="icon" type="image/x-icon" href="static/favicon.ico">
+    <link rel="manifest" href="/static/manifest.webmanifest">
+    <meta name="theme-color" content="#f1e6aa">
+    <script src="static/js/vue.min.js"></script>
+    <!-- i18n translations -->
+    <script src="locales/chatv2.zh.js"></script>
+    <script src="locales/chatv2.en.js"></script>
+
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f1e6aa;
+            color: #333;
+            height: 100vh;
+            height: 100dvh; /* 动态视口高度，更适合移动端 */
+            overflow: hidden;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            left: 0;
+        }
+
+        #app {
+            height: 100vh;
+            height: 100dvh; /* 动态视口高度 */
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        .main-page {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            height: 100dvh; /* 动态视口高度 */
+            opacity: 1;
+            transform: translateY(0);
+            overflow: hidden;
+        }
+
+        .chat-container {
+            width: 100%;
+            height: 100vh;
+            height: 100dvh; /* 动态视口高度 */
+            background: #f1e6aa;
+            position: relative;
+            overflow: hidden;
+        }
+
+
+        .status-indicator {
+            color: #333;
+            font-size: 18px;
+            font-weight: 500;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-indicator.speaking {
+            color: #06ae56;
+        }
+
+        .status-indicator.listening {
+            color: #2980b9;
+        }
+
+        .message-bubbles-container {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 420px;
+            max-height: 60%;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 1000;
+            pointer-events: auto;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+            opacity: 1;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+        }
+
+        .message-bubbles-container.hidden {
+            transform: translate(calc(-50% + 100%), -50%);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .message-bubbles-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* 滚动指示器 */
+        .scroll-indicator {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 20px;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .message-bubbles-container:hover .scroll-indicator,
+        .message-bubbles-container.scrollable .scroll-indicator {
+            opacity: 1;
+        }
+
+        /* 顶部最后一条消息预览（在隐藏消息容器时显示） */
+        .top-message-preview {
+            position: fixed;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            max-width: 92%;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 18px 26px;
+            border-radius: 28px;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+            color: #2c3e50;
+            font-size: 22px;
+            line-height: 1.5;
+            letter-spacing: 0.8px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            z-index: 1500;
+            pointer-events: none;
+        }
+
+        .message-bubble {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 12px 16px;
+            border-radius: 18px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+            font-size: 14px;
+            line-height: 1.4;
+            word-break: break-word;
+            max-width: 100%;
+            animation: bubbleSlideIn 0.4s ease-out;
+            pointer-events: none;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            flex-shrink: 0;
+        }
+
+        .message-bubble.user {
+            background: rgba(149, 236, 105, 0.95);
+            color: #333;
+            align-self: flex-end;
+            margin-left: 40px;
+        }
+
+        .message-bubble.assistant {
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+            align-self: flex-start;
+            margin-right: 40px;
+        }
+
+        @keyframes bubbleSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px) scale(0.8);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        /* Loading overlay for /api/offer */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading-box {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+        }
+
+        .spinner {
+            width: 22px;
+            height: 22px;
+            border: 3px solid #e0e0e0;
+            border-top-color: #07C160;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Local preview video - draggable */
+        .local-preview {
+            position: fixed;
+            width: 240px;
+            height: 135px;
+            background: #000;
+            z-index: 2000;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+            object-fit: cover;
+            cursor: move;
+            touch-action: none;
+            user-select: none;
+            transition: transform 0.1s ease-out;
+        }
+
+        .local-preview.dragging {
+            transform: scale(1.05);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+            z-index: 2001;
+        }
+
+        /* Mobile responsive styles for local-preview */
+        @media (max-width: 768px) {
+            .local-preview {
+                margin-top: 50px;
+                width: 135px;
+                height: 240px;
+                cursor: grab;
+            }
+
+            .local-preview.dragging {
+                cursor: grabbing;
+            }
+
+            /* 移动端消息容器样式调整 */
+            .message-bubbles-container {
+                width: 320px;
+                max-height: 50%;
+            }
+
+            .top-message-preview {
+                top: 25px;
+                max-width: 95%;
+                font-size: 18px;
+                padding: 15px 20px;
+                border-radius: 24px;
+                letter-spacing: 0.7px;
+            }
+
+            .message-bubble {
+                font-size: 13px;
+                padding: 10px 14px;
+                border-radius: 16px;
+            }
+
+            /* 确保移动端不出现滚动 */
+            html, body {
+                overflow: hidden !important;
+                position: fixed !important;
+                width: 100% !important;
+                height: 100vh !important;
+                height: 100dvh !important;
+            }
+
+            #app {
+                touch-action: pan-x pan-y; /* 允许水平和垂直平移，但防止缩放 */
+            }
+
+        }
+
+        /* 隐藏状态的“把手”提示 */
+        .edge-handle {
+            position: fixed;
+            width: 28px;
+            height: 56px;
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.28);
+            box-shadow: 0 3px 12px rgba(0, 0, 0, 0.25);
+            z-index: 2002;
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(2px);
+            opacity: 1;
+            transition: opacity 0.2s ease;
+        }
+
+        .edge-handle::before {
+            content: '‹';
+            color: #fff;
+            font-size: 22px;
+            line-height: 1;
+            opacity: 0.95;
+        }
+
+        .edge-handle.left::before {
+            content: '›';
+        }
+
+        /* 摄像头切换悬浮按钮 */
+        .camera-switch-btn {
+            position: fixed;
+            width: 44px;
+            height: 44px;
+            border-radius: 999px;
+            background: rgba(0, 0, 0, 0.72);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+            z-index: 2003;
+            backdrop-filter: blur(6px);
+            transition: transform 0.2s ease, background 0.2s ease, opacity 0.2s ease;
+            cursor: pointer;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .camera-switch-btn:active {
+            transform: scale(0.96);
+        }
+
+        .camera-switch-btn svg {
+            width: 22px;
+            height: 22px;
+            opacity: 0.95;
+        }
+
+        .camera-switch-btn.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+
+
+        /* 摄像头不可用时的占位符 */
+        .camera-placeholder {
+            position: fixed;
+            width: 240px;
+            height: 135px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 14px;
+            text-align: center;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+            z-index: 2000;
+            user-select: none;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .camera-placeholder:hover {
+            transform: scale(1.02);
+        }
+
+        .camera-placeholder .icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+            opacity: 0.8;
+        }
+
+        .camera-placeholder .text {
+            font-weight: 500;
+            line-height: 1.2;
+        }
+
+        .camera-placeholder .subtext {
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 4px;
+        }
+
+        /* 移动端摄像头占位符 */
+        @media (max-width: 768px) {
+            .camera-placeholder {
+                width: 135px;
+                height: 240px;
+                font-size: 13px;
+            }
+
+            .camera-placeholder .icon {
+                font-size: 28px;
+            }
+
+        }
+
+        /* 音频模式指示器 */
+        .audio-mode-indicator {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 193, 7, 0.9);
+            color: #333;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            z-index: 1500;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .audio-mode-indicator .icon {
+            font-size: 14px;
+        }
+
+        /* 按住说话按钮样式 */
+        .push-to-talk-container {
+            position: fixed;
+            bottom: 15%;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2005;
+            pointer-events: auto;
+        }
+
+        .push-to-talk-btn {
+            width: 112px;
+            height: 112px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .push-to-talk-btn:hover {
+            background: rgba(0, 0, 0, 0.9);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: scale(1.05);
+        }
+
+        .push-to-talk-btn:active,
+        .push-to-talk-btn.active {
+            background: rgba(220, 38, 38, 0.9);
+            border-color: rgba(255, 255, 255, 0.8);
+            transform: scale(0.95);
+            box-shadow: 0 2px 10px rgba(220, 38, 38, 0.5);
+        }
+
+        .push-to-talk-icon {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 4px;
+        }
+
+        .push-to-talk-icon svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .push-to-talk-text {
+            font-size: 12px;
+            font-weight: 500;
+            text-align: center;
+            line-height: 1.2;
+        }
+
+        /* 移动端按住说话按钮样式调整 */
+        @media (max-width: 768px) {
+            .push-to-talk-container {
+                bottom: 18%;
+            }
+
+            .push-to-talk-btn {
+                width: 96px;
+                height: 96px;
+            }
+
+            .push-to-talk-icon {
+                width: 40px;
+                height: 40px;
+            }
+
+            .push-to-talk-text {
+                font-size: 11px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <div class="main-page">
+
+            <!-- Status indicator -->
+            <div class="chat-container">
+                <div class="loading-overlay" v-if="isLoadingOffer">
+                    <div class="loading-box">
+                        <div class="spinner"></div>
+                        <div>{{ t('establishingConnection') }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Video elements -->
+            <div>
+                <video ref="remoteVideo" autoplay :muted="false" playsinline style="position:absolute;width:0;height:0;opacity:0;left:-9999px;top:-9999px;"></video>
+                <video ref="localVideo"
+                       v-if="hasCamera"
+                       class="local-preview"
+                       :class="{ dragging: isDragging }"
+                       :style="{ left: videoPosition.x + 'px', top: videoPosition.y + 'px' }"
+                       @touchstart="handleTouchStart"
+                       @touchmove="handleTouchMove"
+                       @touchend="handleTouchEnd"
+                       @mousedown="handleMouseDown"
+                       @mousemove="handleMouseMove"
+                       @mouseup="handleMouseUp"
+                       autoplay
+                       :muted="true"
+                       playsinline></video>
+
+                <!-- 摄像头切换按钮（跟随本地预览视频位置） -->
+                <div class="camera-switch-btn"
+                     v-if="hasCamera && !(isEdgeHiddenLeft || isEdgeHiddenRight)"
+                     :style="cameraSwitchBtnStyle"
+                     @click="switchCamera"
+                     @touchend.prevent="switchCamera">
+                    <!-- 简洁循环箭头相机图标 -->
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M9 7H8.17L6.59 5.41C6.21 5.03 5.7 4.8 5.17 4.8H4c-1.1 0-2 .9-2 2v8.4c0 1.1.9 2 2 2h7.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M15 17h.83l1.58 1.59c.38.38.89.61 1.42.61H20c1.1 0 2-.9 2-2V8.8c0-1.1-.9-2-2-2h-7.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M8 12l-3 3m0 0h3m-3 0v-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M16 12l3-3m0 0h-3m3 0v3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+
+
+                <!-- 按住说话按钮（固定在底部中央） -->
+                <div class="push-to-talk-container" v-if="voiceMode === 'push-to-talk'">
+                    <button class="push-to-talk-btn"
+                            :class="{ active: isPushToTalkActive }"
+                            @mousedown="startPushToTalk"
+                            @mouseup="stopPushToTalk"
+                            @mouseleave="stopPushToTalk"
+                            @touchstart.prevent="startPushToTalk"
+                            @touchend.prevent="stopPushToTalk"
+                            @touchcancel.prevent="stopPushToTalk">
+                        <div class="push-to-talk-icon">
+                            <svg v-if="!isPushToTalkActive" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <line x1="12" y1="19" x2="12" y2="23" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <line x1="8" y1="23" x2="16" y2="23" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <svg v-else viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <line x1="12" y1="19" x2="12" y2="23" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <line x1="8" y1="23" x2="16" y2="23" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+                        <div class="push-to-talk-text">
+                            {{ isPushToTalkActive ? t('releaseToEnd') : t('pushToTalk') }}
+                        </div>
+                    </button>
+                </div>
+
+
+
+                <!-- 左右隐藏时显示的把手提示（不拦截事件） - 只在有摄像头时显示 -->
+                <div class="edge-handle" v-if="hasCamera && (isEdgeHiddenLeft || isEdgeHiddenRight)"
+                     :class="{ left: isEdgeHiddenLeft, right: isEdgeHiddenRight }"
+                     :style="edgeHandleStyle"
+                     @click="revealFromEdge"
+                     @touchend.prevent="revealFromEdge"></div>
+            </div>
+
+            <!-- 顶部最后一条消息预览（当消息容器隐藏时显示） -->
+            <div class="top-message-preview"
+                 v-if="isMoreMessageHidden && lastMessageText">
+                {{ lastMessageText }}
+            </div>
+
+            <!-- Message bubbles -->
+            <div class="message-bubbles-container"
+                 :class="{ hidden: isMoreMessageHidden, scrollable: hasScrollableContent }"
+                 @touchstart="handleMessageContainerTouchStart"
+                 @touchmove="handleMessageContainerTouchMove"
+                 @touchend="handleMessageContainerTouchEnd"
+                 @scroll="handleMessageScroll">
+                <div class="scroll-indicator" v-if="hasScrollableContent">↕</div>
+                <div v-for="(message, index) in displayMessages" :key="index"
+                    :class="['message-bubble', message.role === 'user' ? 'user' : 'assistant']">
+                    {{ message.content }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // URL 不再承载参数，改为从 localStorage 读取
+
+        window.chatApp = new Vue({
+            el: '#app',
+            data: {
+                pc: null,
+                localStream: null,
+                remoteStream: null,
+                isStarted: false,
+                isConnected: false,
+                status: null,
+                dataChannel: null,
+                messages: [],
+                open_xiaozhi_url: true,
+                maxMessages: 50,
+                macAddress: '',
+                speakingState: 'listening',
+                currentAudio: null,
+                isLoadingOffer: false,
+                // 摄像头状态相关
+                cameraError: null,
+                hasCamera: true,
+                audioOnlyMode: false,
+                // 音频设备相关
+                audioInputDevices: [], // 可用的音频输入设备
+                selectedAudioDeviceId: '', // 当前选择的音频设备ID
+                audioOutputDevices: [], // 可用的音频输出设备
+                selectedSpeakerDeviceId: '', // 当前选择的扬声器设备ID
+                // 拖拽相关状态
+                isDragging: false,
+                dragStart: { x: 0, y: 0 },
+                videoPosition: { x: 16, y: 16 },
+                videoOffset: { x: 0, y: 0 },
+                // 贴边隐藏相关
+                edgePeekWidth: 20, // 隐藏后保留在屏幕内的可抓取宽度
+                edgeSnapThreshold: 32, // 结束拖拽时吸附到边缘的阈值
+                // 把手样式尺寸
+                handleWidth: 28,
+                handleHeight: 56,
+                handleMargin: 6,
+                // 消息容器滑动手势相关状态
+                isMoreMessageHidden: false,
+                swipeStartX: 0,
+                swipeStartY: 0,
+                swipeStartTime: 0,
+                isSwipeGesture: false,
+                minSwipeDistance: 50,
+                maxSwipeTime: 300,
+                // 消息容器触摸状态
+                isMessageContainerTouching: false,
+                messageScrollStartY: 0,
+                messageScrollStartX: 0,
+                messageScrollStartTime: 0,
+                hasScrollableContent: false,
+                isVerticalScrolling: false,
+                // 自适应音量控制
+                adaptiveVolumeControl: true,
+                maxVolume: 0.8, // 最大音量限制，防止回声
+                volumeAdjustmentRate: 0.02, // 音量调整速率
+                echoDetectionThreshold: 0.7, // 回声检测阈值
+                lastVolumeAdjustTime: 0,
+                // 摄像头切换相关
+                isSwitchingCamera: false,
+                preferredFacingMode: 'user', // 'user' 前置，'environment' 后置
+                videoInputDevices: [], // 可用的视频输入设备
+                // 语音模式相关
+                voiceMode: 'continuous', // 'continuous' 或 'push-to-talk'
+                isPushToTalkActive: false, // 是否正在按住说话
+                audioTrackEnabled: true, // 音频轨道是否启用
+                // 触觉反馈相关
+                hasUserInteracted: false, // 是否有过用户手势交互
+                // 音频解锁与播放队列
+                audioUnlocked: false,
+                pendingMusicQueue: [],
+                hasShownAudioUnlockTip: false,
+                _audioCtx: null,
+                // 连接统计
+                connectionStats: {
+                    attempts: 0,
+                    successes: 0,
+                    failures: 0,
+                    lastAttemptTime: null,
+                    lastSuccessTime: null,
+                    iceGatheringDuration: 0
+                },
+                // 国际化
+                currentLanguage: 'zh', // 'zh' 或 'en'
+                i18n: null // 从外部文件加载
+            },
+            mounted() {
+                // 初始化国际化翻译
+                this.i18n = {
+                    zh: window.chatv2I18n?.zh || {},
+                    en: window.chatv2I18n?.en || {}
+                };
+
+                // 从本地存储获取语言设置
+                try {
+                    const savedLanguage = localStorage.getItem('language');
+                    if (savedLanguage && (savedLanguage === 'zh' || savedLanguage === 'en')) {
+                        this.currentLanguage = savedLanguage;
+                    } else {
+                        // 根据浏览器语言自动检测
+                        const browserLang = navigator.language || navigator.userLanguage;
+                        this.currentLanguage = browserLang.startsWith('zh') ? 'zh' : 'en';
+                    }
+                } catch (e) { /* 忽略本地存储错误 */ }
+
+                // 网络环境诊断
+                this.diagnoseNetworkEnvironment();
+
+                // 从本地存储获取设置
+                try {
+                    const savedMac = localStorage.getItem('macAddress');
+                    const savedAudio = localStorage.getItem('selectedAudioDeviceId');
+                    const savedSpeaker = localStorage.getItem('selectedSpeakerDeviceId');
+                    const savedVoiceMode = localStorage.getItem('voiceMode');
+                    if (savedMac) this.macAddress = savedMac;
+                    if (savedAudio) this.selectedAudioDeviceId = savedAudio;
+                    if (savedSpeaker) this.selectedSpeakerDeviceId = savedSpeaker;
+                    if (savedVoiceMode) this.voiceMode = savedVoiceMode;
+                } catch (e) { /* 忽略本地存储错误 */ }
+                this.initializeMedia().then(() => {
+                    // 枚举可用摄像头和麦克风
+                    this.enumerateVideoInputs();
+                    this.enumerateAudioInputs();
+                    this.start();
+                }).catch((error) => {
+                    console.error('媒体初始化失败:', error);
+                    // 即使媒体初始化失败，也尝试启动连接（仅音频模式）
+                    this.start();
+                });
+                this.setInitialVideoPosition();
+
+                // 监听窗口大小变化
+                window.addEventListener('resize', this.handleWindowResize);
+                window.addEventListener('orientationchange', this.handleOrientationChange);
+
+                // 添加全局滑动手势监听器（仅在移动设备上）
+                if (window.innerWidth <= 768) {
+                    this.isMoreMessageHidden = true; // 移动端默认隐藏消息容器
+                    document.addEventListener('touchstart', this.handleGlobalTouchStart, { passive: false });
+                    document.addEventListener('touchmove', this.handleGlobalTouchMove, { passive: false });
+                    document.addEventListener('touchend', this.handleGlobalTouchEnd, { passive: false });
+                }
+
+
+                // 记录首次用户交互（避免浏览器在无用户手势时拦截震动），并尝试解锁音频
+                // 不使用 once:true，因为移动端浏览器手势会过期，需要每次点击都尝试解锁
+                this._onUserInteract = () => {
+                    this.hasUserInteracted = true;
+                    this.unlockAudio();
+                    // 如果有待播放的音乐，在用户手势上下文中直接尝试播放
+                    if (this.audioUnlocked && this.pendingMusicQueue.length > 0) {
+                        this.drainPendingMusicQueue();
+                    }
+                };
+                window.addEventListener('pointerdown', this._onUserInteract, { capture: true });
+                window.addEventListener('keydown', this._onUserInteract, { capture: true });
+            },
+            beforeDestroy() {
+                // 清理事件监听器
+                window.removeEventListener('resize', this.handleWindowResize);
+                window.removeEventListener('orientationchange', this.handleOrientationChange);
+
+                // 清理滑动手势监听器
+                document.removeEventListener('touchstart', this.handleGlobalTouchStart);
+                document.removeEventListener('touchmove', this.handleGlobalTouchMove);
+                document.removeEventListener('touchend', this.handleGlobalTouchEnd);
+
+
+                // 清理用户交互监听
+                if (this._onUserInteract) {
+                    window.removeEventListener('pointerdown', this._onUserInteract, { capture: true });
+                    window.removeEventListener('keydown', this._onUserInteract, { capture: true });
+                    this._onUserInteract = null;
+                }
+            },
+            computed: {
+                displayMessages() {
+                    return this.messages.slice(-this.maxMessages);
+                },
+                lastMessageText() {
+                    const list = this.displayMessages;
+                    if (!list || list.length === 0) return '';
+                    const last = list[list.length - 1];
+                    return last && last.content ? String(last.content) : '';
+                },
+                // 摄像头切换按钮位置（贴近本地预览视频右下角，且不越界）
+                cameraSwitchBtnStyle() {
+                    // 如果没有摄像头，返回隐藏样式
+                    if (!this.hasCamera) {
+                        return { display: 'none' };
+                    }
+
+                    // 直接基于本地预览的固定定位坐标与尺寸计算，确保拖动时实时跟随
+                    const { x, y } = this.videoPosition;
+                    const video = this.$refs.localVideo;
+                    const btnSize = 44;
+                    const margin = 8;
+                    let vw, vh;
+                    if (video) {
+                        const rect = video.getBoundingClientRect();
+                        vw = rect.width;
+                        vh = rect.height;
+                    } else {
+                        // 回退：根据已知本地预览尺寸估算
+                        const isMobile = (window.innerWidth || 0) <= 768;
+                        vw = isMobile ? 135 : 240;
+                        vh = isMobile ? 240 : 135;
+                    }
+                    let left = x + vw - btnSize - margin;
+                    let top = y + vh - btnSize - margin;
+                    // 约束在视窗内
+                    left = Math.max(6, Math.min(left, window.innerWidth - btnSize - 6));
+                    top = Math.max(6, Math.min(top, window.innerHeight - btnSize - 6));
+                    return { left: left + 'px', top: top + 'px' };
+                },
+                // 是否处于左右隐藏状态（仅基于位置阈值，避免依赖 DOM 尺寸抖动）
+                isEdgeHiddenLeft() {
+                    // 如果没有摄像头，不存在隐藏状态
+                    if (!this.hasCamera) return false;
+                    // 只要超出左边界一点，就认为处于左侧隐藏状态，确保把手可见
+                    return this.videoPosition.x <= -1;
+                },
+                isEdgeHiddenRight() {
+                    // 如果没有摄像头，不存在隐藏状态
+                    if (!this.hasCamera) return false;
+                    const windowWidth = window.innerWidth || 0;
+                    const rightHiddenEdge = windowWidth - this.edgePeekWidth;
+                    return this.videoPosition.x >= rightHiddenEdge - 1;
+                },
+                edgeHandleStyle() {
+                    // 如果没有摄像头，直接隐藏
+                    if (!this.hasCamera) return { display: 'none' };
+
+                    const video = this.$refs.localVideo;
+                    if (!video) return { display: 'none' };
+                    const rect = video.getBoundingClientRect();
+                    const videoHeight = rect.height || 0;
+                    const windowHeight = window.innerHeight || 0;
+
+                    // 仅在左右隐藏时显示
+                    if (!this.isEdgeHiddenLeft && !this.isEdgeHiddenRight) return { display: 'none' };
+
+                    const centerY = this.videoPosition.y + videoHeight / 2;
+                    let top = centerY - this.handleHeight / 2;
+                    top = Math.max(6, Math.min(top, windowHeight - this.handleHeight - 6));
+
+                    let left = this.handleMargin;
+                    if (this.isEdgeHiddenRight) {
+                        left = window.innerWidth - this.handleWidth - this.handleMargin;
+                    }
+                    return { top: top + 'px', left: left + 'px' };
+                }
+            },
+            watch: {
+                currentLanguage(newVal) {
+                    try { localStorage.setItem('language', newVal); } catch (e) {}
+                },
+                messages: {
+                    handler() {
+                        this.checkScrollableContent();
+                    },
+                    deep: true
+                }
+            },
+            methods: {
+                t(key) {
+                    return this.i18n[this.currentLanguage][key] || key;
+                },
+                toggleLanguage() {
+                    this.currentLanguage = this.currentLanguage === 'zh' ? 'en' : 'zh';
+                },
+                // 网络环境诊断
+                diagnoseNetworkEnvironment() {
+                    console.log('=== WebRTC 连接诊断信息 ===');
+
+                    // 1. 检测网络连接类型
+                    if (navigator.connection || navigator.mozConnection || navigator.webkitConnection) {
+                        const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+                        console.log('网络类型:', connection.effectiveType || connection.type || 'unknown');
+                        console.log('下行带宽:', connection.downlink ? connection.downlink + ' Mbps' : 'unknown');
+                        console.log('RTT (往返时间):', connection.rtt ? connection.rtt + ' ms' : 'unknown');
+                    } else {
+                        console.log('网络类型: 浏览器不支持 Network Information API');
+                    }
+
+                    // 2. 检测是否在安全上下文（HTTPS）
+                    console.log('安全上下文 (HTTPS):', window.isSecureContext ? '✅ 是' : '⚠️ 否（某些功能可能受限）');
+
+                    // 3. 检测 WebRTC 支持情况
+                    console.log('WebRTC 支持:');
+                    console.log('  - RTCPeerConnection:', typeof RTCPeerConnection !== 'undefined' ? '✅' : '❌');
+                    console.log('  - getUserMedia:', !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) ? '✅' : '❌');
+                    console.log('  - DataChannel:', typeof RTCDataChannel !== 'undefined' ? '✅' : '❌');
+
+                    // 4. 检测浏览器信息
+                    const ua = navigator.userAgent;
+                    let browserName = 'Unknown';
+                    if (ua.indexOf('Chrome') > -1 && ua.indexOf('Edg') === -1) browserName = 'Chrome';
+                    else if (ua.indexOf('Safari') > -1 && ua.indexOf('Chrome') === -1) browserName = 'Safari';
+                    else if (ua.indexOf('Firefox') > -1) browserName = 'Firefox';
+                    else if (ua.indexOf('Edg') > -1) browserName = 'Edge';
+                    console.log('浏览器:', browserName);
+
+                    // 5. 检测设备类型
+                    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+                    console.log('设备类型:', isMobile ? '移动设备' : '桌面设备');
+
+                    // 6. 检测是否在局域网
+                    console.log('当前页面 URL:', window.location.href);
+                    const hostname = window.location.hostname;
+                    const isLocalNetwork = hostname === 'localhost' ||
+                                          hostname === '127.0.0.1' ||
+                                          hostname.startsWith('192.168.') ||
+                                          hostname.startsWith('10.') ||
+                                          hostname.startsWith('172.16.') ||
+                                          hostname.endsWith('.local');
+                    console.log('可能在局域网:', isLocalNetwork ? '✅ 是（WebRTC 直连更容易成功）' : '⚠️ 否（可能需要 STUN/TURN）');
+
+                    console.log('=========================');
+
+                    // 7. 常见问题提示
+                    if (!window.isSecureContext && !isLocalNetwork) {
+                        console.warn('⚠️ 警告：非 HTTPS 环境且非本地网络，getUserMedia 可能被阻止');
+                    }
+                },
+
+                async initializeMedia() {
+                    try {
+                        // 首先检查设备是否支持媒体设备访问
+                        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                            throw new Error('UNSUPPORTED_BROWSER');
+                        }
+
+                        // 音频配置
+                        const audioConstraints = {
+                            echoCancellation: true,
+                            echoCancellationType: "system", // 使用系统级回声消除
+                            noiseSuppression: true,
+                            autoGainControl: true,
+                            googEchoCancellation: true,
+                            googAutoGainControl: true,
+                            googNoiseSuppression: true,
+                            googHighpassFilter: true,
+                            googTypingNoiseDetection: true,
+                            googAudioMirroring: false,
+                            googEchoCancellation2: true, // 启用增强的回声消除
+                            googDAEchoCancellation: true, // 启用数字音频回声消除
+                            googNoiseReduction: true, // 额外的噪声抑制
+                            latency: 0.02, // 20ms延迟以改善回声消除效果
+                            sampleRate: 48000,
+                            sampleSize: 16,
+                            channelCount: 1
+                        };
+
+                        // 如果指定了音频设备，添加到约束中
+                        if (this.selectedAudioDeviceId) {
+                            audioConstraints.deviceId = { exact: this.selectedAudioDeviceId };
+                        }
+
+                        // 尝试获取摄像头和音频
+                        try {
+                            const videoConstraints = {
+                                width: 640,
+                                height: 480,
+                                facingMode: this.preferredFacingMode
+                            };
+
+                            this.localStream = await navigator.mediaDevices.getUserMedia({
+                                video: videoConstraints,
+                                audio: audioConstraints
+                            });
+
+                        this.hasCamera = true;
+                        this.audioOnlyMode = false;
+                        this.cameraError = null;
+
+                        // 如果是按住说话模式，初始时禁用音频轨道
+                        if (this.voiceMode === 'push-to-talk') {
+                            this.disableAudioTrack();
+                        }
+
+                        } catch (videoError) {
+                            console.warn('摄像头访问失败，尝试仅音频模式:', videoError);
+
+                            // 尝试仅音频模式
+                            try {
+                                this.localStream = await navigator.mediaDevices.getUserMedia({
+                                    video: false,
+                                    audio: audioConstraints
+                                });
+
+                                this.hasCamera = false;
+                                this.audioOnlyMode = true;
+                                this.cameraError = this.getCameraErrorMessage(videoError);
+
+                                // 如果是按住说话模式，初始时禁用音频轨道
+                                if (this.voiceMode === 'push-to-talk') {
+                                    this.disableAudioTrack();
+                                }
+
+                                // // 显示音频模式提示
+                                // this.messages.push({
+                                //     role: "assistant",
+                                //     content: `摄像头不可用（${this.cameraError}），已切换到仅音频模式`
+                                // });
+
+                            } catch (audioError) {
+                                console.error('音频访问也失败:', audioError);
+                                throw audioError;
+                            }
+                        }
+
+                    } catch (error) {
+                        console.error('Error accessing media devices:', error);
+                        this.cameraError = this.getCameraErrorMessage(error);
+                        this.hasCamera = false;
+                        this.audioOnlyMode = false;
+
+                        // 显示用户友好的错误消息
+                        this.showMediaError(error);
+                        throw error;
+                    }
+                },
+
+                getCameraErrorMessage(error) {
+                    switch (error.name || error.message) {
+                        case 'NotAllowedError':
+                        case 'PermissionDeniedError':
+                            return this.t('permissionDenied');
+                        case 'NotFoundError':
+                        case 'DevicesNotFoundError':
+                            return this.t('deviceNotFound');
+                        case 'NotReadableError':
+                        case 'TrackStartError':
+                            return this.t('deviceInUse');
+                        case 'OverconstrainedError':
+                        case 'ConstraintNotSatisfiedError':
+                            return this.t('unsupportedConfig');
+                        case 'NotSupportedError':
+                            return this.t('browserNotSupported');
+                        case 'UNSUPPORTED_BROWSER':
+                            return this.t('browserVersionTooLow');
+                        case 'TypeError':
+                            return this.t('configError');
+                        default:
+                            return this.t('unknownError');
+                    }
+                },
+
+                showMediaError(error) {
+                    const errorMsg = this.getCameraErrorMessage(error);
+                    let userMessage = '';
+
+                    switch (error.name || error.message) {
+                        case 'NotAllowedError':
+                        case 'PermissionDeniedError':
+                            userMessage = this.t('allowPermission');
+                            break;
+                        case 'NotFoundError':
+                        case 'DevicesNotFoundError':
+                            userMessage = this.t('checkDevice');
+                            break;
+                        case 'NotReadableError':
+                        case 'TrackStartError':
+                            userMessage = this.t('deviceOccupied');
+                            break;
+                        case 'UNSUPPORTED_BROWSER':
+                            userMessage = this.t('upgradeBrowser');
+                            break;
+                        default:
+                            userMessage = this.t('mediaAccessFailed');
+                    }
+
+                    this.messages.push({
+                        role: "assistant",
+                        content: `❌ ${userMessage}（${this.currentLanguage === 'zh' ? '错误' : 'Error'}：${errorMsg}）`
+                    });
+
+                    // 显示重试按钮（通过消息形式）
+                    setTimeout(() => {
+                        this.messages.push({
+                            role: "assistant",
+                            content: this.t('solution')
+                        });
+                        this.$nextTick(() => { this.scrollToBottom(); });
+                    }, 1000);
+                },
+                async enumerateVideoInputs() {
+                    try {
+                        const devices = await navigator.mediaDevices.enumerateDevices();
+                        this.videoInputDevices = devices.filter(d => d.kind === 'videoinput');
+                    } catch (e) {
+                        console.warn('枚举视频设备失败:', e);
+                    }
+                },
+
+                async enumerateAudioInputs() {
+                    try {
+                        const devices = await navigator.mediaDevices.enumerateDevices();
+                        this.audioInputDevices = devices.filter(d => d.kind === 'audioinput');
+                        this.audioOutputDevices = devices.filter(d => d.kind === 'audiooutput');
+
+                        // console.log("this.audioInputDevices", this.audioInputDevices)
+                        // console.log("this.audioOutputDevices", this.audioOutputDevices)
+
+                        // console.log('可用音频输入设备:', this.audioInputDevices.map(d => ({
+                        //     deviceId: d.deviceId,
+                        //     label: d.label || '未知设备'
+                        // })));
+
+                        // console.log('可用音频输出设备:', this.audioOutputDevices.map(d => ({
+                        //     deviceId: d.deviceId,
+                        //     label: d.label || '未知设备'
+                        // })));
+
+                        // 验证从URL参数传入的设备ID是否有效
+                        if (this.selectedAudioDeviceId) {
+                            const deviceExists = this.audioInputDevices.some(d => d.deviceId === this.selectedAudioDeviceId);
+                            if (!deviceExists) {
+                                console.warn('指定的音频输入设备不存在，将使用默认设备');
+                                this.selectedAudioDeviceId = '';
+                            }
+                        }
+
+                        // 验证从URL参数传入的扬声器设备ID是否有效
+                        if (this.selectedSpeakerDeviceId) {
+                            const deviceExists = this.audioOutputDevices.some(d => d.deviceId === this.selectedSpeakerDeviceId);
+                            if (!deviceExists) {
+                                console.warn('指定的扬声器设备不存在，将使用默认设备');
+                                this.selectedSpeakerDeviceId = '';
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('枚举音频设备失败:', e);
+                    }
+                },
+
+
+
+
+
+
+                async switchCamera() {
+                    if (this.isSwitchingCamera || !this.hasCamera) return;
+                    this.isSwitchingCamera = true;
+                    try {
+                        // 切换期望摄像头
+                        this.preferredFacingMode = this.preferredFacingMode === 'user' ? 'environment' : 'user';
+
+                        // 获取新的视频流（保留原音频轨）
+                        const newStream = await navigator.mediaDevices.getUserMedia({
+                            video: {
+                                width: 640,
+                                height: 480,
+                                facingMode: this.preferredFacingMode
+                            },
+                            audio: false
+                        });
+
+                        const newVideoTrack = newStream.getVideoTracks()[0];
+                        if (!newVideoTrack) throw new Error('未获取到新的视频轨道');
+
+                        // 替换到 RTCPeerConnection 中现有的视频发送器
+                        const senders = this.pc ? this.pc.getSenders() : [];
+                        const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+                        if (videoSender) {
+                            await videoSender.replaceTrack(newVideoTrack);
+                        }
+
+                        // 替换本地预览（先停止旧的视频轨道）
+                        if (this.localStream) {
+                            const oldVideoTracks = this.localStream.getVideoTracks();
+                            oldVideoTracks.forEach(t => {
+                                this.localStream.removeTrack(t);
+                                t.stop();
+                            });
+                            this.localStream.addTrack(newVideoTrack);
+                        }
+
+                        // 更新 video 元素
+                        const localVideo = this.$refs.localVideo;
+                        if (localVideo) {
+                            localVideo.srcObject = this.localStream;
+                            // 前置镜像，后置不镜像
+                            localVideo.style.transform = this.preferredFacingMode === 'user' ? 'scaleX(-1)' : 'none';
+                        }
+
+                        // 释放临时流中非使用的轨道
+                        newStream.getTracks().forEach(t => {
+                            if (t !== newVideoTrack) t.stop();
+                        });
+                    } catch (err) {
+                        console.error('切换摄像头失败:', err);
+                        this.messages.push({
+                            role: "assistant",
+                            content: `${this.t('cameraSwitchFailed')}: ${this.getCameraErrorMessage(err)}`
+                        });
+                        this.$nextTick(() => { this.scrollToBottom(); });
+                    } finally {
+                        this.isSwitchingCamera = false;
+                    }
+                },
+
+                scrollToBottom() {
+                    this.$nextTick(() => {
+                        const container = document.querySelector('.message-bubbles-container');
+                        if (container && !this.isMoreMessageHidden) {
+                            // 平滑滚动到底部
+                            container.scrollTo({
+                                top: container.scrollHeight,
+                                behavior: 'smooth'
+                            });
+                        }
+                        this.checkScrollableContent();
+                    });
+                },
+
+                checkScrollableContent() {
+                    this.$nextTick(() => {
+                        const container = document.querySelector('.message-bubbles-container');
+                        if (container) {
+                            this.hasScrollableContent = container.scrollHeight > container.clientHeight;
+                        }
+                    });
+                },
+
+                handleMessageScroll(event) {
+                    // 滚动时更新滚动状态
+                    this.checkScrollableContent();
+                },
+                async negotiate() {
+                    // 记录连接尝试
+                    this.connectionStats.attempts++;
+                    this.connectionStats.lastAttemptTime = new Date();
+                    const startTime = performance.now();
+
+                    try {
+                        if (!this.pc) return;
+
+                        // 创建 offer
+                        const offer = await this.pc.createOffer();
+                        if (!this.pc) return;
+
+                        await this.pc.setLocalDescription(offer);
+
+                        // 等待 ICE 候选收集完成，确保 SDP 包含所有候选信息
+                        // 这样可以提高连接成功率，避免"有时连上有时连不上"的问题
+                        console.log('⏳ 等待 ICE 候选收集完成...');
+                        const iceStartTime = performance.now();
+                        const iceGatheringComplete = await this.waitForICEGathering();
+                        const iceEndTime = performance.now();
+                        this.connectionStats.iceGatheringDuration = Math.round(iceEndTime - iceStartTime);
+
+                        if (!iceGatheringComplete) {
+                            console.warn('⚠️ ICE 收集超时，使用当前已收集的候选');
+                        } else {
+                            console.log(`✅ ICE 候选收集完成 (耗时 ${this.connectionStats.iceGatheringDuration}ms)，准备发送 offer`);
+                        }
+
+                        if (!this.pc) return;
+                        this.isLoadingOffer = true;
+
+                        const response = await fetch('/api/offer', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                sdp: this.pc.localDescription.sdp,
+                                type: this.pc.localDescription.type,
+                                macAddress: this.macAddress,
+                            })
+                        });
+
+                        const answer = await response.json();
+                        if (!this.pc) return;
+
+                        await this.pc.setRemoteDescription(answer);
+
+                        const endTime = performance.now();
+                        const totalDuration = Math.round(endTime - startTime);
+                        console.log(`✅ 协商完成 (总耗时 ${totalDuration}ms)`);
+
+                    } catch (error) {
+                        this.connectionStats.failures++;
+                        console.error('❌ 协商过程出错:', error);
+                        console.error('连接统计:', {
+                            尝试次数: this.connectionStats.attempts,
+                            成功次数: this.connectionStats.successes,
+                            失败次数: this.connectionStats.failures,
+                            成功率: this.connectionStats.attempts > 0 ?
+                                ((this.connectionStats.successes / this.connectionStats.attempts) * 100).toFixed(1) + '%' : 'N/A'
+                        });
+
+                        this.messages.push({
+                            role: "assistant",
+                            content: `${this.t('negotiationFailed')}: ${error.message}`
+                        });
+                        this.$nextTick(() => { this.scrollToBottom(); });
+                    } finally {
+                        // this.isLoadingOffer = false;
+                    }
+                },
+
+                // 等待 ICE 候选收集完成
+                waitForICEGathering(timeout = 5000) {
+                    return new Promise((resolve) => {
+                        if (!this.pc) {
+                            resolve(false);
+                            return;
+                        }
+
+                        // 如果已经完成，直接返回
+                        if (this.pc.iceGatheringState === 'complete') {
+                            console.log('✅ ICE 候选已经收集完成');
+                            resolve(true);
+                            return;
+                        }
+
+                        let candidateCount = 0;
+                        let lastCandidateTime = Date.now();
+                        let hasReceivedCandidate = false;
+                        const candidateTimeout = 2000; // 2秒内没有新候选，认为收集完成
+                        let candidateTimeoutId = null;
+
+                        // 清理函数
+                        const cleanup = () => {
+                            if (timeoutId) clearTimeout(timeoutId);
+                            if (candidateTimeoutId) clearTimeout(candidateTimeoutId);
+                            if (this.pc) {
+                                this.pc.removeEventListener('icegatheringstatechange', onStateChange);
+                                this.pc.removeEventListener('icecandidate', onCandidate);
+                            }
+                        };
+
+                        // 检查是否可以完成（基于候选收集情况）
+                        const checkCanComplete = () => {
+                            const now = Date.now();
+                            const timeSinceLastCandidate = now - lastCandidateTime;
+
+                            // 如果已经收到候选，且2秒内没有新候选，认为收集完成
+                            if (hasReceivedCandidate && timeSinceLastCandidate >= candidateTimeout) {
+                                console.log(`✅ ICE 候选收集完成（已收集 ${candidateCount} 个候选，${timeSinceLastCandidate}ms 内无新候选）`);
+                                cleanup();
+                                resolve(true);
+                                return true;
+                            }
+                            return false;
+                        };
+
+                        // 监听 ICE 候选事件
+                        const onCandidate = (event) => {
+                            if (event.candidate) {
+                                candidateCount++;
+                                lastCandidateTime = Date.now();
+                                hasReceivedCandidate = true;
+                                console.log(`📡 收到 ICE 候选 #${candidateCount}: type=${event.candidate.type}, protocol=${event.candidate.protocol}`);
+
+                                // 重置候选超时计时器
+                                if (candidateTimeoutId) clearTimeout(candidateTimeoutId);
+                                candidateTimeoutId = setTimeout(() => {
+                                    if (!checkCanComplete()) {
+                                        console.log('⏳ 候选收集暂停，继续等待状态变化...');
+                                    }
+                                }, candidateTimeout);
+                            } else {
+                                // 收到 null 候选，表示收集完成
+                                console.log('✅ ICE 候选收集完成（收到 null 候选）');
+                                cleanup();
+                                resolve(true);
+                            }
+                        };
+
+                        // 监听状态变化
+                        const onStateChange = () => {
+                            const state = this.pc?.iceGatheringState;
+                            console.log(`📊 ICE gathering state changed: ${state}`);
+
+                            if (state === 'complete') {
+                                console.log(`✅ ICE 候选收集完成（状态变为 complete，共收集 ${candidateCount} 个候选）`);
+                                cleanup();
+                                resolve(true);
+                            } else if (state === 'new') {
+                                console.log('🔄 ICE 收集状态: new（开始收集）');
+                            } else if (state === 'gathering') {
+                                console.log('⏳ ICE 收集状态: gathering（正在收集）');
+                            }
+                        };
+
+                        // 设置总超时，避免无限等待
+                        const timeoutId = setTimeout(() => {
+                            const state = this.pc?.iceGatheringState;
+                            console.warn(`⚠️ ICE 收集超时 (${timeout}ms)，当前状态: ${state}，已收集 ${candidateCount} 个候选`);
+                            cleanup();
+                            // 即使超时，如果已经收到一些候选，也算部分成功
+                            resolve(hasReceivedCandidate);
+                        }, timeout);
+
+                        // 添加事件监听器
+                        this.pc.addEventListener('icegatheringstatechange', onStateChange);
+                        this.pc.addEventListener('icecandidate', onCandidate);
+
+                        // 如果当前状态已经是 gathering，立即检查一次
+                        if (this.pc.iceGatheringState === 'gathering') {
+                            console.log('⏳ ICE 收集已在进行中，等待完成...');
+                        }
+                    });
+                },
+                setupDataChannel() {
+                    this.dataChannel = this.pc.createDataChannel('chat');
+                    this.dataChannel.onopen = () => {
+                        console.log('Data channel is open');
+                        // 连接建立后发送注册信息
+                        this.dataChannel.send(JSON.stringify({type: "register", macAddress: this.macAddress}));
+
+                    };
+                    this.dataChannel.onmessage = (event) => {
+                        this.messages.push(event.data);
+                        this.$nextTick(() => { this.scrollToBottom(); });
+                    };
+                    this.dataChannel.onclose = () => { console.log('Data channel closed'); };
+                    this.pc.ondatachannel = (event) => {
+                        const channel = event.channel;
+                        channel.onmessage = (e) => {
+                            const data = JSON.parse(e.data);
+                            // console.log("data", data)
+                            if (data["type"] == "tts" && data["state"] == "sentence_start") {
+                                this.speakingState = "speaking";
+                            } else {
+                                this.speakingState = "listening";
+                            }
+                            if (data["type"] === "music") {
+                                this.playMusicUrl(data["url"]);
+                            }
+                            if (data["type"] === "websocket" && data["state"] === "close") {
+
+                                this.messages.push({"role": "assistant", "content": this.t('connectionDisconnected')});
+                                // this.dataChannel.close();
+                                // this.pc.close();
+                                // this.endAndBack();
+                                return;
+                            }
+                            if (data["type"] === "stt") {
+                                this.messages.push({ "role": "user", "content": data["text"] });
+                            } else if (data["type"] === "tts" && data["state"] === "sentence_start") {
+                                this.messages.push({ "role": "assistant", "content": data["text"] });
+                                if (data["text"].includes("请登录到控制面板添加设备，输入验证码：") && this.open_xiaozhi_url) {
+                                    window.open("https://xiaozhi.me/console", "_blank");
+                                    this.open_xiaozhi_url = false;
+                                }
+                            } else if (data["type"] === "tool") {
+                                if (data["text"] === "set_volume") {
+                                    // 应用自适应音量控制的最大音量限制
+                                    const requestedVolume = Math.max(0, Math.min(1, data["value"] / 100));
+                                    const finalVolume = this.adaptiveVolumeControl ?
+                                        Math.min(requestedVolume, this.maxVolume) : requestedVolume;
+                                    this.$refs.remoteVideo.volume = finalVolume;
+
+                                    // 确保远程视频也使用选择的扬声器设备
+                                    this.applySpeakerDevice(this.$refs.remoteVideo);
+
+                                    console.log(`设置音量: 请求=${requestedVolume.toFixed(2)}, 实际=${finalVolume.toFixed(2)}`);
+                                } else if (data["text"] === "open_tab") {
+                                    window.open(data["value"], "_blank");
+                                } else if (data["text"] === "stop_music") {
+                                    this.stopMusic();
+                                }
+
+                            } else if (data["type"] === "llm") {
+                                console.log("llm:", data["text"]);
+                            } else if (data["type"] === "tts") {
+                            } else {
+                                console.log("unknown type:", data["type"]);
+                            }
+                            this.$nextTick(() => { this.scrollToBottom(); });
+                        };
+                    };
+                },
+                async start() {
+                    if (this.pc) {
+                        this.stop();
+                    }
+
+                    // 在创建 RTCPeerConnection 前获取服务端 ICE 配置
+                    let iceConfig = { iceServers: [], iceCandidatePoolSize: 0, bundlePolicy: "max-bundle" };
+                    try {
+                        const resp = await fetch('/api/ice');
+                        const data = await resp.json();
+                        iceConfig = { ...data, bundlePolicy: "max-bundle" };
+                        console.log('从服务器获取ICE配置:', JSON.stringify(iceConfig, null, 2));
+
+                        if (!iceConfig.iceServers || iceConfig.iceServers.length === 0) {
+                            console.warn('⚠️ 未配置 ICE 服务器，仅支持局域网直连');
+                            console.warn('如果客户端不在同一局域网，连接可能会失败');
+
+                            // 提示用户
+                            this.messages.push({
+                                role: "assistant",
+                                content: this.t('noStunTurn')
+                            });
+                            this.$nextTick(() => { this.scrollToBottom(); });
+                        } else {
+                            console.log(`✅ 已配置 ${iceConfig.iceServers.length} 个ICE服务器，支持跨NAT连接`);
+
+                            // 打印每个 ICE 服务器的详细信息
+                            iceConfig.iceServers.forEach((server, index) => {
+                                console.log(`  ICE服务器 ${index + 1}:`, {
+                                    urls: server.urls,
+                                    hasCredentials: !!(server.username && server.credential)
+                                });
+                            });
+                        }
+                    } catch (e) {
+                        console.error('❌ 获取 /api/ice 失败，使用空配置:', e);
+                        iceConfig = { iceServers: [], iceCandidatePoolSize: 0, bundlePolicy: "max-bundle" };
+
+                        this.messages.push({
+                            role: "assistant",
+                            content: this.t('iceConfigFailed')
+                        });
+                        this.$nextTick(() => { this.scrollToBottom(); });
+                    }
+
+                    this.pc = new RTCPeerConnection(iceConfig);
+                    this.status = "connecting...";
+                    this.setupDataChannel();
+                    // 添加音频轨道
+                    this.localStream.getAudioTracks().forEach(track => {
+                        // 在按住说话模式下，初始时禁用音频轨道
+                        if (this.voiceMode === 'push-to-talk') {
+                            track.enabled = false;
+                        }
+                        this.pc.addTrack(track, this.localStream);
+                    });
+
+                    // 只在有摄像头时添加视频轨道
+                    if (this.hasCamera) {
+                        this.localStream.getVideoTracks().forEach(track => { this.pc.addTrack(track, this.localStream); });
+                    }
+                    this.pc.addEventListener('track', (evt) => {
+                        // 只处理音频轨道，忽略视频轨道
+                        if (evt.track.kind === 'audio') {
+                            this.remoteStream = evt.streams[0];
+                            this.$nextTick(() => { this.assignVideoStreams(); });
+                        }
+                    });
+                    this.pc.addEventListener('connectionstatechange', () => {
+                        this.status = this.pc.connectionState;
+                        if (this.pc.connectionState === 'connected') {
+                            // 记录成功连接
+                            this.connectionStats.successes++;
+                            this.connectionStats.lastSuccessTime = new Date();
+
+                            const successRate = ((this.connectionStats.successes / this.connectionStats.attempts) * 100).toFixed(1);
+                            console.log(`🎉 连接成功！统计信息:`, {
+                                尝试次数: this.connectionStats.attempts,
+                                成功次数: this.connectionStats.successes,
+                                失败次数: this.connectionStats.failures,
+                                成功率: successRate + '%',
+                                ICE收集耗时: this.connectionStats.iceGatheringDuration + 'ms'
+                            });
+
+                            this.isConnected = true;
+                            this.isLoadingOffer = false;
+                            this.$nextTick(() => {
+                                this.assignVideoStreams();
+                                // 启动自适应音量控制
+                                this.startAdaptiveVolumeControl();
+                            });
+                        } else if (this.pc.connectionState === 'failed') {
+                            console.error('PeerConnection failed');
+                            console.error('当前 ICE 连接状态:', this.pc.iceConnectionState);
+                            console.error('当前 ICE 收集状态:', this.pc.iceGatheringState);
+
+                            // 提供更详细的错误信息
+                            this.messages.push({
+                                role: "assistant",
+                                content: this.t('connectionFailedReason')
+                            });
+                            this.$nextTick(() => { this.scrollToBottom(); });
+
+                            // 仍然显示 alert 以引起用户注意
+                            setTimeout(() => {
+                                alert(this.t('connectionFailedAlert'));
+                            }, 500);
+                        } else if (this.pc.connectionState === 'disconnected') {
+                            console.warn('PeerConnection disconnected');
+                            this.messages.push({
+                                role: "assistant",
+                                content: this.t('connectionDisconnected')
+                            });
+                            this.$nextTick(() => { this.scrollToBottom(); });
+                        }
+                    });
+                    this.pc.addEventListener('iceconnectionstatechange', () => {
+                        console.log('ICE connection state:', this.pc.iceConnectionState);
+
+                        // 诊断信息：记录 ICE 连接状态变化
+                        if (this.pc.iceConnectionState === 'failed') {
+                            console.error('ICE 连接失败 - 可能原因：NAT 穿透失败、防火墙阻止、STUN/TURN 配置无效');
+
+                            // 尝试重启 ICE
+                            console.log('尝试重启 ICE 连接...');
+                            this.pc.restartIce();
+                        } else if (this.pc.iceConnectionState === 'disconnected') {
+                            console.warn('ICE 连接断开 - 等待重连...');
+
+                            // 设置超时，如果 10 秒内没有重连成功，则提示用户
+                            setTimeout(() => {
+                                if (this.pc && this.pc.iceConnectionState === 'disconnected') {
+                                    console.error('ICE 重连超时');
+                                    this.messages.push({
+                                        role: "assistant",
+                                        content: this.t('networkUnstable')
+                                    });
+                                    this.$nextTick(() => { this.scrollToBottom(); });
+                                }
+                            }, 10000);
+                        } else if (this.pc.iceConnectionState === 'connected' || this.pc.iceConnectionState === 'completed') {
+                            console.log('✅ ICE 连接成功');
+                        }
+                    });
+                    this.pc.addEventListener('icegatheringstatechange', () => {
+                        console.log('ICE gathering state:', this.pc.iceGatheringState);
+
+                        if (this.pc.iceGatheringState === 'complete') {
+                            console.log('✅ ICE 候选收集完成');
+                        }
+                    });
+
+                    // 监听 ICE 候选事件，用于诊断
+                    this.pc.addEventListener('icecandidate', (event) => {
+                        if (event.candidate) {
+                            const candidate = event.candidate;
+                            console.log(`📡 ICE 候选: type=${candidate.type}, protocol=${candidate.protocol}, address=${candidate.address || 'N/A'}`);
+                        } else {
+                            console.log('ICE 候选收集结束（收到空候选）');
+                        }
+                    });
+                    this.pc.addEventListener('signalingstatechange', () => {
+                        // console.log('Signaling state:', this.pc.signalingState);
+                    });
+                    this.isStarted = true;
+                    // 立即发起协商
+                    this.negotiate();
+                },
+                stop() {
+                    this.isStarted = false;
+                    this.isConnected = false;
+                    this.status = null;
+                    if (this.$refs.remoteVideo) { this.$refs.remoteVideo.srcObject = null; }
+                    if (this.$refs.localVideo) { this.$refs.localVideo.srcObject = null; }
+                    this.remoteStream = null;
+                    if (this.dataChannel) { this.dataChannel.close(); this.dataChannel = null; }
+                    if (this.pc) { this.pc.close(); this.pc = null; }
+
+                },
+                endAndBack() {
+                    this.stop();
+                    // window.location.href = '/';
+                },
+
+                assignVideoStreams() {
+                    const remoteVideo = this.$refs.remoteVideo;
+                    const localVideo = this.$refs.localVideo;
+                    if (!remoteVideo) { return; }
+
+                    // 只在有摄像头时处理本地视频
+                    if (localVideo && this.hasCamera) {
+                        localVideo.style.display = 'block';
+                    }
+
+                    if (this.remoteStream) {
+                        remoteVideo.srcObject = this.remoteStream;
+                        remoteVideo.style.transform = 'none';
+
+                        // 应用选择的扬声器设备
+                        this.applySpeakerDevice(remoteVideo);
+
+                    }
+
+                    // 只在有摄像头和本地视频元素存在时设置本地流
+                    if (this.localStream && localVideo && this.hasCamera) {
+                        localVideo.srcObject = this.localStream;
+                        // 前置镜像，后置不镜像
+                        localVideo.style.transform = this.preferredFacingMode === 'user' ? 'scaleX(-1)' : 'none';
+                    }
+                },
+                // 解锁移动端音频播放能力，并在解锁后自动播放排队的音乐
+                unlockAudio() {
+                    try {
+                        // 已存在的远端音频流绑定到 WebAudio 以触发解锁
+                        if (!this._audioCtx) {
+                            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                            if (AudioCtx) {
+                                this._audioCtx = new AudioCtx();
+                            }
+                        }
+                        if (this._audioCtx && this._audioCtx.state === 'suspended') {
+                            this._audioCtx.resume().catch(() => {});
+                        }
+
+                        if (!this.audioUnlocked) {
+                            // 通过短静音播放进一步“热身”iOS音频系统（不以其成功与否作为解锁条件）
+                            try {
+                                const silent = new Audio();
+                                silent.src = 'data:audio/mp3;base64,//uQZAAAAAAAAAAAAAAAAAAAA';
+                                silent.volume = 0;
+                                silent.play().catch(() => {});
+                            } catch (_) {}
+                            // 同步标记为已解锁，实际播放能力依赖用户手势上下文
+                            this.audioUnlocked = true;
+                        }
+                    } catch (_) {
+                        this.promptAudioUnlockMessageOnce();
+                    }
+                },
+                // 播放排队中的音乐
+                drainPendingMusicQueue() {
+                    if (!this.audioUnlocked) return;
+                    if (!this.pendingMusicQueue || this.pendingMusicQueue.length === 0) return;
+                    const queue = [...this.pendingMusicQueue];
+                    this.pendingMusicQueue = [];
+                    queue.forEach(url => this.playMusicUrl(url));
+                },
+                // 仅提示一次需要用户交互来解锁音频
+                promptAudioUnlockMessageOnce() {
+                    if (this.hasShownAudioUnlockTip) return;
+                    this.hasShownAudioUnlockTip = true;
+                    this.messages.push({
+                        role: 'assistant',
+                        content: '🔊 请点击页面任意位置以启用音乐播放（浏览器限制）'
+                    });
+                    this.$nextTick(() => { this.scrollToBottom(); });
+                },
+                playMusicUrl(url) {
+                    try {
+                        // 若尚未解锁，先入队，提示一次
+                        if (!this.audioUnlocked) {
+                            this.pendingMusicQueue.push(url);
+                            this.promptAudioUnlockMessageOnce();
+                            return;
+                        }
+
+                        if (this.currentAudio) {
+                            try { this.currentAudio.pause(); } catch (_) {}
+                            try { this.currentAudio.currentTime = 0; } catch (_) {}
+                            this.currentAudio = null;
+                        }
+                        const audio = new Audio(url);
+                        audio.crossOrigin = 'anonymous';
+                        audio.preload = 'auto';
+                        audio.volume = 0.8;
+
+                        // 应用选择的扬声器设备
+                        this.applySpeakerDevice(audio);
+
+                        this.currentAudio = audio;
+                        audio.play().then(() => {
+                            // ok
+                        }).catch((err) => {
+                            // iOS/Android 无用户手势时可能失败，回退到入队
+                            // 不重置 audioUnlocked，下次用户点击时会在手势上下文中重试队列
+                            this.currentAudio = null;
+                            this.pendingMusicQueue.push(url);
+                            console.warn('audio.play() 被阻止，等待用户点击后重试:', err);
+                        });
+                        audio.addEventListener('ended', () => { if (this.currentAudio === audio) { this.currentAudio = null; } });
+                        audio.addEventListener('error', () => { if (this.currentAudio === audio) { this.currentAudio = null; } });
+                    } catch (error) {
+                        console.error('Error creating audio:', error);
+                        this.messages.push({ role: 'assistant', content: this.t('musicPlayFailed') });
+                        this.$nextTick(() => { this.scrollToBottom(); });
+                    }
+                },
+
+                stopMusic() {
+                    try {
+                        if (this.currentAudio) {
+                            this.currentAudio.pause();
+                            this.currentAudio.currentTime = 0;
+                            this.currentAudio.src = '';
+                            this.currentAudio.load();
+                            this.currentAudio = null;
+                        }
+                    } catch (error) {
+                        console.error('Error stopping audio:', error);
+                    }
+                },
+
+                // 应用选择的扬声器设备到音频元素
+                applySpeakerDevice(audioElement) {
+                    if (!this.selectedSpeakerDeviceId || !audioElement) return;
+
+                    try {
+                        // 检查浏览器是否支持 setSinkId
+                        if ('setSinkId' in audioElement) {
+                            audioElement.setSinkId(this.selectedSpeakerDeviceId)
+                                .then(() => {
+                                    // console.log('扬声器设备设置成功:', this.selectedSpeakerDeviceId);
+                                })
+                                .catch((error) => {
+                                    console.warn('设置扬声器设备失败:', error);
+                                });
+                        } else {
+                            console.warn('当前浏览器不支持 setSinkId，无法指定扬声器设备');
+                        }
+                    } catch (error) {
+                        console.error('应用扬声器设备时出错:', error);
+                    }
+                },
+
+                // 自适应音量控制
+                adjustVolumeBasedOnEcho() {
+                    if (!this.adaptiveVolumeControl || !this.$refs.remoteVideo) return;
+
+                    const now = Date.now();
+                    // 限制调整频率，避免过于频繁的音量变化
+                    if (now - this.lastVolumeAdjustTime < 500) return;
+
+                    const currentVolume = this.$refs.remoteVideo.volume;
+                    let newVolume = currentVolume;
+
+                    // 检测音频强度，如果过高可能导致回声
+                    if (this._audioCtx) {
+                        try {
+                            if (!this._echoAnalyser) {
+                                this._echoAnalyser = this._audioCtx.createAnalyser();
+                                this._echoAnalyser.fftSize = 256;
+                                if (this.remoteStream) {
+                                    const source = this._audioCtx.createMediaStreamSource(this.remoteStream);
+                                    source.connect(this._echoAnalyser);
+                                }
+                            }
+                            if (this._echoAnalyser) {
+                                const dataArray = new Uint8Array(this._echoAnalyser.frequencyBinCount);
+                                this._echoAnalyser.getByteFrequencyData(dataArray);
+                                const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+                                const normalizedLevel = average / 255;
+
+                                // 如果音频强度过高，降低音量
+                                if (normalizedLevel > this.echoDetectionThreshold && currentVolume > 0.3) {
+                                    newVolume = Math.max(0.3, currentVolume - this.volumeAdjustmentRate);
+                                    console.log(`检测到高音频强度 (${normalizedLevel.toFixed(2)})，降低音量至 ${newVolume.toFixed(2)}`);
+                                }
+                                // 如果音频强度适中且音量较低，适当提高音量
+                                else if (normalizedLevel < 0.4 && currentVolume < this.maxVolume) {
+                                    newVolume = Math.min(this.maxVolume, currentVolume + this.volumeAdjustmentRate * 0.5);
+                                }
+
+                                // 应用新音量
+                                if (Math.abs(newVolume - currentVolume) > 0.01) {
+                                    this.$refs.remoteVideo.volume = newVolume;
+                                    this.lastVolumeAdjustTime = now;
+                                }
+                            }
+                        } catch (e) {
+                            // 忽略音频分析错误
+                        }
+                    }
+                },
+
+                // 启动自适应音量控制监控
+                startAdaptiveVolumeControl() {
+                    if (!this.adaptiveVolumeControl) return;
+
+                    // 每秒检查一次音量调整
+                    setInterval(() => {
+                        this.adjustVolumeBasedOnEcho();
+                    }, 1000);
+                },
+
+                // 触摸拖拽事件处理
+                handleTouchStart(event) {
+                    event.preventDefault();
+                    const touch = event.touches[0];
+                    this.startDrag(touch.clientX, touch.clientY);
+                },
+
+                handleTouchMove(event) {
+                    if (!this.isDragging) return;
+                    event.preventDefault();
+                    const touch = event.touches[0];
+                    this.updateDrag(touch.clientX, touch.clientY);
+                },
+
+                handleTouchEnd(event) {
+                    event.preventDefault();
+                    this.endDrag();
+                },
+
+                // 鼠标拖拽事件处理（用于桌面端测试）
+                handleMouseDown(event) {
+                    event.preventDefault();
+                    this.startDrag(event.clientX, event.clientY);
+                    document.addEventListener('mousemove', this.handleDocumentMouseMove);
+                    document.addEventListener('mouseup', this.handleDocumentMouseUp);
+                },
+
+                handleMouseMove(event) {
+                    if (!this.isDragging) return;
+                    event.preventDefault();
+                    this.updateDrag(event.clientX, event.clientY);
+                },
+
+                handleMouseUp(event) {
+                    event.preventDefault();
+                    this.endDrag();
+                },
+
+                handleDocumentMouseMove(event) {
+                    if (!this.isDragging) return;
+                    this.updateDrag(event.clientX, event.clientY);
+                },
+
+                handleDocumentMouseUp() {
+                    this.endDrag();
+                    document.removeEventListener('mousemove', this.handleDocumentMouseMove);
+                    document.removeEventListener('mouseup', this.handleDocumentMouseUp);
+                },
+
+                // 点击把手从隐藏边弹回可见边
+                revealFromEdge() {
+                    const video = this.$refs.localVideo;
+                    if (!video) return;
+
+                    const rect = video.getBoundingClientRect();
+                    const videoWidth = rect.width;
+                    const windowWidth = window.innerWidth;
+
+                    let targetX = this.videoPosition.x;
+                    if (this.isEdgeHiddenLeft) {
+                        // 从左侧隐藏恢复到左可见边
+                        targetX = 0;
+                    } else if (this.isEdgeHiddenRight) {
+                        // 从右侧隐藏恢复到右可见边
+                        targetX = windowWidth - videoWidth;
+                    }
+                    this.videoPosition = { x: targetX, y: this.videoPosition.y };
+                },
+
+                // 拖拽核心逻辑
+                startDrag(clientX, clientY) {
+                    this.isDragging = true;
+                    const video = this.$refs.localVideo;
+                    if (!video) return;
+
+                    const rect = video.getBoundingClientRect();
+                    this.dragStart = { x: clientX, y: clientY };
+                    this.videoOffset = {
+                        x: clientX - rect.left,
+                        y: clientY - rect.top
+                    };
+                },
+
+                updateDrag(clientX, clientY) {
+                    if (!this.isDragging) return;
+
+                    const video = this.$refs.localVideo;
+                    if (!video) return;
+
+                    // 计算新位置
+                    let newX = clientX - this.videoOffset.x;
+                    let newY = clientY - this.videoOffset.y;
+
+                    // 获取视频尺寸
+                    const videoRect = video.getBoundingClientRect();
+                    const videoWidth = videoRect.width;
+                    const videoHeight = videoRect.height;
+
+                    // 获取窗口尺寸
+                    const windowWidth = window.innerWidth;
+                    const windowHeight = window.innerHeight;
+
+                    // 边界约束（允许左右超出屏幕，只保留 edgePeekWidth 把手）
+                    const minX = -videoWidth + this.edgePeekWidth; // 最多隐藏到只剩把手
+                    const maxX = windowWidth - this.edgePeekWidth;  // 右侧同理
+                    const minY = 0;
+                    const maxY = windowHeight - videoHeight;
+
+                    newX = Math.max(minX, Math.min(newX, maxX));
+                    newY = Math.max(minY, Math.min(newY, maxY));
+
+                    // 更新位置
+                    this.videoPosition = { x: newX, y: newY };
+                },
+
+                endDrag() {
+                    this.isDragging = false;
+
+                    const video = this.$refs.localVideo;
+                    if (!video) return;
+
+                    const videoRect = video.getBoundingClientRect();
+                    const videoWidth = videoRect.width;
+                    const windowWidth = window.innerWidth;
+
+                    let { x } = this.videoPosition;
+
+                    const leftVisibleEdge = 0;
+                    const rightVisibleEdge = windowWidth - videoWidth;
+                    const leftHiddenEdge = -videoWidth + this.edgePeekWidth;
+                    const rightHiddenEdge = windowWidth - this.edgePeekWidth;
+
+                    // 根据当前位置吸附到“可见边”或“隐藏边”（把手）
+                    if (x < leftVisibleEdge) {
+                        // 左侧越界：根据与可见边距离决定吸附到可见或隐藏
+                        if (Math.abs(x - leftVisibleEdge) <= this.edgeSnapThreshold) {
+                            x = leftVisibleEdge; // 回到完全可见
+                        } else {
+                            x = leftHiddenEdge; // 吸附到隐藏位置，仅留把手
+                        }
+                    } else if (x > rightVisibleEdge) {
+                        // 右侧越界
+                        if (Math.abs(x - rightVisibleEdge) <= this.edgeSnapThreshold) {
+                            x = rightVisibleEdge; // 回到完全可见
+                        } else {
+                            x = rightHiddenEdge; // 吸附到隐藏位置
+                        }
+                    } else {
+                        // 在可视范围内（未隐藏），结束时吸附到最近的左右可见边
+                        const distanceToLeft = x - leftVisibleEdge;
+                        const distanceToRight = rightVisibleEdge - x;
+                        if (distanceToLeft <= distanceToRight) {
+                            x = leftVisibleEdge;
+                        } else {
+                            x = rightVisibleEdge;
+                        }
+                    }
+
+                    this.videoPosition = { x, y: this.videoPosition.y };
+                },
+
+                // 设置初始视频位置
+                setInitialVideoPosition() {
+                    // 检查是否为移动设备
+                    const isMobile = window.innerWidth <= 768;
+
+                    if (isMobile) {
+                        // 手机端：默认位置在右上角
+                        this.videoPosition = {
+                            x: window.innerWidth - 135 - 16,
+                            y: 16
+                        };
+                    } else {
+                        // 桌面端：默认位置在左下角
+                        this.videoPosition = {
+                            x: 16,
+                            y: window.innerHeight - 135 - 16
+                        };
+                    }
+                },
+
+                // 处理窗口大小变化
+                handleWindowResize() {
+                    this.constrainVideoPosition();
+                    // 强制刷新以更新依赖 window 尺寸的定位
+                    this.$forceUpdate();
+                },
+
+                // 处理屏幕方向变化
+                handleOrientationChange() {
+                    // 延迟处理，等待方向变化完成
+                    setTimeout(() => {
+                        this.constrainVideoPosition();
+                        this.$forceUpdate();
+                    }, 100);
+                },
+
+                // 约束视频位置在窗口边界内
+                constrainVideoPosition() {
+                    const video = this.$refs.localVideo;
+                    if (!video) return;
+
+                    const videoRect = video.getBoundingClientRect();
+                    const videoWidth = videoRect.width;
+                    const videoHeight = videoRect.height;
+
+                    const windowWidth = window.innerWidth;
+                    const windowHeight = window.innerHeight;
+
+                    let newX = this.videoPosition.x;
+                    let newY = this.videoPosition.y;
+
+                    // 边界约束（与拖拽一致，允许左右隐藏到只剩把手）
+                    const minX = -videoWidth + this.edgePeekWidth;
+                    const maxX = windowWidth - this.edgePeekWidth;
+                    const minY = 0;
+                    const maxY = windowHeight - videoHeight;
+
+                    newX = Math.max(minX, Math.min(newX, maxX));
+                    newY = Math.max(minY, Math.min(newY, maxY));
+
+                    // 更新位置
+                    this.videoPosition = { x: newX, y: newY };
+                },
+
+                // 消息容器触摸事件处理
+                handleMessageContainerTouchStart(event) {
+                    this.isMessageContainerTouching = true;
+                    this.isVerticalScrolling = false;
+                    const touch = event.touches[0];
+                    this.messageScrollStartY = touch.clientY;
+                    this.messageScrollStartX = touch.clientX;
+                    this.messageScrollStartTime = Date.now();
+
+                    // 不阻止事件冒泡，让全局处理器也能接收到开始事件
+                },
+
+                handleMessageContainerTouchMove(event) {
+                    if (!this.isMessageContainerTouching) return;
+
+                    const touch = event.touches[0];
+                    const deltaY = touch.clientY - this.messageScrollStartY;
+                    const deltaX = touch.clientX - this.messageScrollStartX;
+
+                    // 判断用户意图：如果垂直移动距离大于水平移动距离，则认为是垂直滚动
+                    if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 10) {
+                        this.isVerticalScrolling = true;
+                        // 只有在垂直滚动时才阻止事件冒泡
+                        event.stopPropagation();
+                    }
+                    // 如果是水平滑动，不阻止事件冒泡，让全局滑动手势处理
+                },
+
+                handleMessageContainerTouchEnd(event) {
+                    this.isMessageContainerTouching = false;
+                    this.isVerticalScrolling = false;
+                    // 不阻止事件冒泡，让全局处理器也能处理结束事件
+                },
+
+                // 全局滑动手势处理
+                handleGlobalTouchStart(event) {
+                    // 如果正在拖拽视频，不处理滑动手势
+                    if (this.isDragging) return;
+
+                    const touch = event.touches[0];
+                    this.swipeStartX = touch.clientX;
+                    this.swipeStartY = touch.clientY;
+                    this.swipeStartTime = Date.now();
+                    this.isSwipeGesture = false;
+                },
+
+                handleGlobalTouchMove(event) {
+                    // 如果正在拖拽视频或正在垂直滚动，不处理滑动手势
+                    if (this.isDragging || this.isVerticalScrolling) return;
+
+                    const touch = event.touches[0];
+                    const deltaX = touch.clientX - this.swipeStartX;
+                    const deltaY = touch.clientY - this.swipeStartY;
+
+                    // 检查是否是水平滑动手势（水平距离大于垂直距离）
+                    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
+                        this.isSwipeGesture = true;
+                        event.preventDefault(); // 防止页面滚动
+                    }
+                },
+
+                handleGlobalTouchEnd(event) {
+                    // 如果正在拖拽视频或正在垂直滚动，不处理滑动手势
+                    if (this.isDragging || this.isVerticalScrolling || !this.isSwipeGesture) return;
+
+                    const touch = event.changedTouches[0];
+                    const deltaX = touch.clientX - this.swipeStartX;
+                    const deltaY = touch.clientY - this.swipeStartY;
+                    const deltaTime = Date.now() - this.swipeStartTime;
+
+                    // 检查是否满足滑动条件
+                    if (Math.abs(deltaX) > this.minSwipeDistance &&
+                        deltaTime < this.maxSwipeTime &&
+                        Math.abs(deltaX) > Math.abs(deltaY)) {
+
+                        if (deltaX > 0) {
+                            // 右滑：隐藏消息容器
+                            this.isMoreMessageHidden = true;
+                        } else {
+                            // 左滑：显示消息容器
+                            this.isMoreMessageHidden = false;
+                        }
+                    }
+
+                    this.isSwipeGesture = false;
+                },
+
+
+                // 按住说话相关方法
+                startPushToTalk() {
+                    if (this.voiceMode !== 'push-to-talk') return;
+                    // 在用户手势的同步回调中尝试解锁音频
+                    this.unlockAudio();
+                    this.dataChannel.send(JSON.stringify({ type: "push-to-talk", state: "start" }));
+
+                    // 先尝试在同步手势回调中触发震动，最大化通过率
+                    if (this.canVibrateNow()) {
+                        try { navigator.vibrate(50); } catch (_) {}
+                    }
+
+                    this.isPushToTalkActive = true;
+                    this.enableAudioTrack();
+
+                    console.log(this.t('startPushToTalk'));
+                },
+
+                stopPushToTalk() {
+                    if (this.voiceMode !== 'push-to-talk') return;
+
+                    this.isPushToTalkActive = false;
+                    this.disableAudioTrack();
+
+                    console.log(this.t('stopPushToTalk'));
+                },
+
+                // 启用音频轨道
+                enableAudioTrack() {
+                    if (!this.localStream) return;
+
+                    const audioTracks = this.localStream.getAudioTracks();
+                    audioTracks.forEach(track => {
+                        track.enabled = true;
+                    });
+
+                    this.audioTrackEnabled = true;
+                },
+
+                // 禁用音频轨道
+                disableAudioTrack() {
+                    if (!this.localStream) return;
+
+                    const audioTracks = this.localStream.getAudioTracks();
+                    audioTracks.forEach(track => {
+                        track.enabled = false;
+                    });
+
+                    this.audioTrackEnabled = false;
+                },
+
+                // 安全触觉反馈（避免无用户手势时被浏览器拦截）
+                safeHapticFeedback(durationMs) {
+                    try {
+                        if (!this.canVibrateNow()) return;
+                        navigator.vibrate(durationMs);
+                    } catch (e) {
+                        // 忽略震动失败
+                    }
+                },
+
+                // 判断当前是否允许震动调用（需要用户激活和焦点等）
+                canVibrateNow() {
+                    if (!('vibrate' in navigator)) return false;
+                    if (typeof navigator.userActivation === 'object' && navigator.userActivation) {
+                        // 优先使用更严格的 userActivation.isActive
+                        if (!navigator.userActivation.isActive) return false;
+                    } else {
+                        // 回退：使用我们记录的首次交互标记
+                        if (!this.hasUserInteracted) return false;
+                    }
+                    if (!document.hasFocus()) return false;
+                    return true;
+                },
+
+                // 打印连接统计（供开发者在控制台调用）
+                printConnectionStats() {
+                    const stats = {
+                        '总尝试次数': this.connectionStats.attempts,
+                        '成功次数': this.connectionStats.successes,
+                        '失败次数': this.connectionStats.failures,
+                        '成功率': this.connectionStats.attempts > 0 ?
+                            ((this.connectionStats.successes / this.connectionStats.attempts) * 100).toFixed(1) + '%' : 'N/A',
+                        '最后尝试时间': this.connectionStats.lastAttemptTime?.toLocaleString() || 'N/A',
+                        '最后成功时间': this.connectionStats.lastSuccessTime?.toLocaleString() || 'N/A',
+                        'ICE收集耗时': this.connectionStats.iceGatheringDuration + 'ms',
+                        '当前连接状态': this.pc?.connectionState || 'N/A',
+                        '当前ICE状态': this.pc?.iceConnectionState || 'N/A'
+                    };
+                    console.table(stats);
+                    return stats;
+                }
+            }
+        });
+
+        // 暴露到全局，方便调试
+        window.printConnectionStats = () => {
+            if (window.chatApp && window.chatApp.printConnectionStats) {
+                return window.chatApp.printConnectionStats();
+            } else {
+                console.warn('chatApp 未初始化');
+            }
+        };
+
+        console.log('💡 提示: 在控制台输入 printConnectionStats() 可查看连接统计信息');
+    </script>
+</body>
+
+</html>

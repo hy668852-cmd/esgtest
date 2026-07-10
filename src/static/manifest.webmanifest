@@ -1,0 +1,25 @@
+{
+  "name": "XiaoZhi WebRTC",
+  "short_name": "XiaoZhi",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#e3f2fd",
+  "theme_color": "#1976d2",
+  "description": "基于 WebRTC 的 AI 实时音视频互动应用",
+  "icons": [
+    {
+      "src": "/static/favicon.ico",
+      "sizes": "64x64 32x32 16x16",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/static/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
+
+

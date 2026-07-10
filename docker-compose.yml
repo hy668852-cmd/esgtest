@@ -1,0 +1,11 @@
+services:
+  web:
+    # build: .
+    image: dairoot/xiaozhi-webrtc:latest
+    ports:
+      - "${PORT:-51000}:${PORT:-51000}"
+    volumes:
+      - ./:/app/
+    network_mode: "host"
+    environment:
+      - PORT=${PORT:-51000}
