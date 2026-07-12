@@ -84,9 +84,9 @@
         }
         .esga-logo-image {
             position: absolute;
-            top: 30.6%;
-            left: 25.6%;
-            height: 262.547px;
+            top: 30.8%;
+            left: 34.4%;
+            height: 265px;
             width: 1504px;
             max-height: none;
             object-fit: contain;
@@ -300,16 +300,16 @@
         /* 歷史對話按鈕 */
         .history-btn {
             position: fixed;
-            top: 3%;
-            left: 3.8%;
-            height: 46.8281px;
-            width: 118.016px;
+            top: 3.8%;
+            left: 4.2%;
+            height: 36px;
+            width: 119px;
             z-index: 1100;
             background: rgba(255, 255, 255, 0.92);
             border: none;
             border-radius: 22px;
             padding: 8px 16px;
-            font-size: 13px;
+            font-size: 16px;
             font-weight: 600;
             color: #333;
             cursor: pointer;
@@ -411,16 +411,16 @@
         /* 常見問題按鈕 */
         .faq-btn {
             position: fixed;
-            top: 3%;
-            left: 13.5%;
-            height: 47.2812px;
-            width: 118.25px;
+            top: 3.8%;
+            left: 15.6%;
+            height: 36px;
+            width: 117px;
             z-index: 1100;
             background: rgba(255, 255, 255, 0.92);
             border: none;
             border-radius: 22px;
             padding: 8px 16px;
-            font-size: 13px;
+            font-size: 16px;
             font-weight: 600;
             color: #333;
             cursor: pointer;
@@ -777,10 +777,10 @@
         /* 按住说话按钮样式 */
         .push-to-talk-container {
             position: fixed;
-            bottom: 19.3%;
-            right: 20.6%;
-            height: 72.9688px;
-            width: 194.938px;
+            bottom: 12.5%;
+            right: 20.3%;
+            height: 94px;
+            width: 195px;
             z-index: 2005;
             pointer-events: auto;
         }
@@ -839,9 +839,9 @@
         /* 文字输入区域 */
         .text-input-container {
             position: fixed;
-            bottom: 17.8%;
-            left: 34.3%;
-            height: 30px;
+            bottom: 14.2%;
+            left: 35.5%;
+            height: 53px;
             width: 370px;
             z-index: 2005;
             display: flex;
@@ -1093,9 +1093,9 @@
 
             <!-- FAQ彈窗 -->
             <div class="faq-modal-overlay" v-if="showFaq" @click.self="showFaq = false">
-                <div class="faq-modal" 
-                     @mousedown="startFaqDrag" 
-                     @touchstart.prevent="startFaqDrag"
+                <div class="faq-modal"
+                     @mousedown="startFaqDrag"
+                     @touchstart="startFaqDrag"
                      :style="faqDragStyle">
                     <div class="faq-modal-header">
                         <span class="faq-modal-title">商戶管理員 - 常見問題（FAQ）</span>
@@ -1497,6 +1497,7 @@
                 },
                 startFaqDrag(e) {
                     if (e.target.closest('.faq-modal-header') || e.target.closest('.faq-modal-body')) return;
+                    e.preventDefault();
                     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
                     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
                     this.faqDragStart = { x: clientX, y: clientY, startX: 0, startY: 0 };
