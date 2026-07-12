@@ -121,7 +121,7 @@ async def server(pc, offer):
 
             message = json.loads(message)
 
-            # 处理文字输入消息（不检查output_audio_queue，确保文字消息始终能送达）
+            # 处理文字输入消息
             if message.get("type") == "text-input":
                 text_content = message.get("text", "")
                 if text_content:
