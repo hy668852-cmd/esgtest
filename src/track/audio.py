@@ -21,6 +21,19 @@ class AudioFaceSwapper(AudioStreamTrack):
         # 初始化回声消除管理器（禁用服务端回声消除，浏览器端已有足够的回声消除能力）
         self.echo_manager = EchoCancellationManager(enable_echo_cancellation=False, enable_debug=False)
 
+        # Jitter buffer：积累一定帧数后再播放，吸收TTS音频到达不均匀导致的卡顿
+        self._jitter_buffer = []
+        self._jitter_min_frames = 8   # 开始播放前至少积累8帧（约160ms缓冲）
+        self._jitter_started = False
+        self._last_samples = None      # 上一帧音频，queue为空时重复播放避免静音断层
+        self._was_empty = True         # 上一周期queue是否为空，用于检测TTS新一轮开始
+
+    def _reset_jitter(self):
+        """当检测到新一轮TTS开始时重置jitter buffer"""
+        self._jitter_buffer.clear()
+        self._jitter_started = False
+        self._last_samples = None
+
     def empty_frame(self):
         samples = np.zeros(960, dtype=np.float32)
         samples = (samples * 32767).astype(np.int16)
@@ -49,7 +62,42 @@ class AudioFaceSwapper(AudioStreamTrack):
 
         # 处理服务端返回的音频
         if self.xiaozhi.server and self.xiaozhi.server.output_audio_queue:
-            samples = self.xiaozhi.server.output_audio_queue.popleft()
+
+            # 将SDK queue中的音频帧全部转移到jitter buffer
+            while self.xiaozhi.server.output_audio_queue:
+                try:
+                    self._jitter_buffer.append(self.xiaozhi.server.output_audio_queue.popleft())
+                except (IndexError, Exception):
+                    break
+
+            # 检测新一轮TTS开始：之前queue为空，现在有数据了
+            if self._was_empty and not self._jitter_started:
+                self._reset_jitter()
+                # 重新把刚才收集的帧放入（_reset_jitter清空了buffer）
+                while self.xiaozhi.server.output_audio_queue:
+                    try:
+                        self._jitter_buffer.append(self.xiaozhi.server.output_audio_queue.popleft())
+                    except (IndexError, Exception):
+                        break
+
+            self._was_empty = False
+
+            # Jitter buffer尚未积累够最小帧数，返回静音等待（预缓冲阶段）
+            if not self._jitter_started:
+                if len(self._jitter_buffer) < self._jitter_min_frames:
+                    return self.empty_frame()
+                # 积累够了，开始播放
+                self._jitter_started = True
+
+            # 从jitter buffer取一帧播放
+            if self._jitter_buffer:
+                samples = self._jitter_buffer.pop(0)
+                self._last_samples = samples
+            elif self._last_samples is not None:
+                # queue暂时为空，重复上一帧避免静音断层（用户听不到停顿）
+                samples = self._last_samples
+            else:
+                return self.empty_frame()
 
             # 更新回声消除管理器的参考音频
             self.echo_manager.update_reference_audio(samples)
@@ -65,6 +113,13 @@ class AudioFaceSwapper(AudioStreamTrack):
             new_frame.time_base = Fraction(1, self.sample_rate)
 
             return new_frame
+
+        # queue为空状态
+        self._was_empty = True
+
+        # TTS播放结束后重置jitter
+        if self._jitter_started:
+            self._reset_jitter()
 
         return self.empty_frame()
 
