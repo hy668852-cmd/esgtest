@@ -162,10 +162,11 @@ async def server(pc, offer):
                                 await proc.communicate()
                                 if proc.returncode != 0:
                                     raise Exception("edge-tts failed")
-                                # ffmpeg转码：48kHz stereo mp3 -> 24kHz mono 16bit wav
+                                # ffmpeg转码：mp3 -> 24kHz mono 16bit wav（高质量重采样）
                                 ffmpeg_proc = await asyncio.create_subprocess_exec(
                                     'ffmpeg', '-y', '-i', mp3_path,
                                     '-ar', '24000', '-ac', '1', '-sample_fmt', 's16',
+                                    '-af', 'aresample=resampler=soxr:precision=28',
                                     wav_path,
                                     stdout=asyncio.subprocess.PIPE,
                                     stderr=asyncio.subprocess.PIPE
@@ -174,11 +175,11 @@ async def server(pc, offer):
                                 os.remove(mp3_path)
                                 if ffmpeg_proc.returncode != 0 or not os.path.exists(wav_path):
                                     raise Exception("ffmpeg failed")
-                                # 读取wav并发送
+                                # 读取wav并发送（readframes参数是样本数，不是字节数）
                                 import wave
                                 with wave.open(wav_path, 'rb') as wf:
                                     frame_duration = xiaozhi.server.audio_opus.input_frame_duration
-                                    frame_size = int(wf.getframerate() * frame_duration / 1000) * 2
+                                    frame_size = wf.getframerate() * frame_duration // 1000  # 样本数
                                     pcm_data = wf.readframes(frame_size)
                                     while pcm_data:
                                         await xiaozhi.server.send_audio(pcm_data)
