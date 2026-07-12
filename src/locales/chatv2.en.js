@@ -34,5 +34,7 @@ window.chatv2I18n.en = {
     startPushToTalk: 'Start push to talk',
     stopPushToTalk: 'Stop push to talk',
     historyTitle: 'Chat History',
-    historyEmpty: 'No conversation history yet'
+    historyEmpty: 'No conversation history yet',
+    textInputPlaceholder: 'Type a message...',
+    faqTitle: 'FAQ'
 };

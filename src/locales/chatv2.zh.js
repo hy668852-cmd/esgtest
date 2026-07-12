@@ -34,5 +34,7 @@ window.chatv2I18n.zh = {
     startPushToTalk: '開始按住說話',
     stopPushToTalk: '結束按住說話',
     historyTitle: '歷史對話',
-    historyEmpty: '暫無對話記錄'
+    historyEmpty: '暫無對話記錄',
+    textInputPlaceholder: '輸入文字訊息…',
+    faqTitle: '常見問題'
 };

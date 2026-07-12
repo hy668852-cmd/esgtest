@@ -21,10 +21,6 @@
             margin: 0;
             padding: 0;
             background: #f1e6aa;
-            background-image: url('/static/images/goody_bg.png');
-            background-size: cover;
-            background-position: center center;
-            background-repeat: no-repeat;
             color: #333;
             height: 100vh;
             height: 100dvh; /* 动态视口高度，更适合移动端 */
@@ -60,12 +56,33 @@
             height: 100vh;
             height: 100dvh; /* 动态视口高度 */
             background: #f1e6aa;
-            background-image: url('/static/images/goody_bg.png');
-            background-size: cover;
-            background-position: center center;
-            background-repeat: no-repeat;
             position: relative;
             overflow: hidden;
+        }
+        .bg-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('/static/images/goody_bg.png');
+            background-size: contain;
+            background-position: left center;
+            background-repeat: no-repeat;
+            opacity: 0.85;
+            pointer-events: none;
+        }
+        .logo-image {
+            position: absolute;
+            top: 50%;
+            right: 5%;
+            transform: translateY(-50%);
+            width: auto;
+            height: 40vh;
+            max-height: 350px;
+            object-fit: contain;
+            pointer-events: none;
+            filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15));
         }
 
 
@@ -380,6 +397,161 @@
             font-size: 14px;
         }
 
+        /* 常見問題按鈕 */
+        .faq-btn {
+            position: fixed;
+            top: 55px;
+            left: 15px;
+            z-index: 1100;
+            background: rgba(255, 255, 255, 0.92);
+            border: none;
+            border-radius: 22px;
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s ease;
+            pointer-events: auto;
+        }
+        .faq-btn:hover { background: rgba(255,255,255,1); transform: scale(1.05); }
+        .faq-btn:active { transform: scale(0.97); }
+        .faq-btn svg { width: 16px; height: 16px; }
+
+        /* FAQ彈窗 */
+        .faq-modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(3px);
+        }
+        .faq-modal {
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 20px;
+            width: 92%;
+            max-width: 520px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+            overflow: hidden;
+            animation: modalSlideIn 0.3s ease-out;
+            cursor: grab;
+        }
+        .faq-modal:active { cursor: grabbing; }
+        .faq-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid rgba(0,0,0,0.08);
+            flex-shrink: 0;
+            cursor: default;
+        }
+        .faq-modal-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #333;
+            text-align: center;
+            flex: 1;
+        }
+        .faq-modal-close {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(0,0,0,0.06);
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            transition: all 0.15s;
+            flex-shrink: 0;
+        }
+        .faq-modal-close:hover { background: rgba(0,0,0,0.12); }
+        .faq-modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 16px;
+            scrollbar-width: thin;
+            -webkit-overflow-scrolling: touch;
+            cursor: default;
+        }
+        .faq-category {
+            margin-bottom: 6px;
+            border-radius: 12px;
+            overflow: hidden;
+            background: rgba(0,0,0,0.03);
+        }
+        .faq-category-header {
+            display: flex;
+            align-items: center;
+            padding: 12px 14px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            transition: background 0.15s;
+            user-select: none;
+        }
+        .faq-category-header:hover { background: rgba(0,0,0,0.05); }
+        .faq-category-num {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #2e7d32;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+        .faq-category-arrow {
+            margin-left: auto;
+            font-size: 12px;
+            color: #999;
+            transition: transform 0.2s;
+        }
+        .faq-category.open .faq-category-arrow { transform: rotate(90deg); }
+        .faq-category-body {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        .faq-category.open .faq-category-body {
+            max-height: 2000px;
+        }
+        .faq-question {
+            padding: 8px 14px 8px 48px;
+            font-size: 13px;
+            color: #555;
+            cursor: pointer;
+            transition: all 0.15s;
+            line-height: 1.5;
+            border-bottom: 1px solid rgba(0,0,0,0.04);
+        }
+        .faq-question:last-child { border-bottom: none; }
+        .faq-question:hover { background: rgba(46,125,50,0.08); color: #2e7d32; }
+        .faq-question-empty {
+            padding: 12px 14px 12px 48px;
+            font-size: 13px;
+            color: #bbb;
+        }
+
         /* Mobile responsive styles for local-preview */
         @media (max-width: 768px) {
             .local-preview {
@@ -650,6 +822,61 @@
             line-height: 1.2;
         }
 
+        /* 文字输入区域 */
+        .text-input-container {
+            position: fixed;
+            bottom: calc(15% - 70px);
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2005;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            pointer-events: auto;
+            width: 340px;
+            max-width: 90vw;
+        }
+        .text-input-box {
+            flex: 1;
+            padding: 10px 16px;
+            border-radius: 24px;
+            border: 2px solid rgba(0,0,0,0.15);
+            background: rgba(255,255,255,0.92);
+            backdrop-filter: blur(10px);
+            font-size: 14px;
+            color: #333;
+            outline: none;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: border-color 0.2s;
+        }
+        .text-input-box:focus { border-color: rgba(0,0,0,0.35); }
+        .text-input-box::placeholder { color: #999; }
+        .text-send-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(0,0,0,0.8);
+            color: #fff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.15s;
+        }
+        .text-send-btn:hover { background: rgba(0,0,0,0.95); transform: scale(1.05); }
+        .text-send-btn:active { transform: scale(0.95); }
+        .text-send-btn svg { width: 18px; height: 18px; }
+        .text-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        @media (max-width: 768px) {
+            .text-input-container {
+                bottom: calc(18% - 65px);
+                width: 300px;
+            }
+            .text-input-box { font-size: 13px; padding: 8px 14px; }
+        }
+
         /* 移动端按住说话按钮样式调整 */
         @media (max-width: 768px) {
             .push-to-talk-container {
@@ -679,6 +906,8 @@
 
             <!-- Status indicator -->
             <div class="chat-container">
+                <div class="bg-image"></div>
+                <img class="logo-image" src="/static/images/sdg_logo.png" alt="SDG Logo">
                 <div class="loading-overlay" v-if="isLoadingOffer">
                     <div class="loading-box">
                         <div class="spinner"></div>
@@ -751,6 +980,19 @@
                     </button>
                 </div>
 
+                <!-- 文字输入区域 -->
+                <div class="text-input-container" v-if="isStarted && isConnected">
+                    <input type="text" class="text-input-box" 
+                           v-model="textInput" 
+                           :placeholder="t('textInputPlaceholder') || '輸入文字訊息…'"
+                           @keydown.enter="sendTextMessage">
+                    <button class="text-send-btn" @click="sendTextMessage" :disabled="!textInput.trim()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                        </svg>
+                    </button>
+                </div>
+
 
 
                 <!-- 左右隐藏时显示的把手提示（不拦截事件） - 只在有摄像头时显示 -->
@@ -786,6 +1028,45 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                 {{ t('historyTitle') || '歷史對話' }}
             </button>
+
+            <!-- 常見問題按鈕 -->
+            <button class="faq-btn" v-if="isStarted" @click="showFaq = true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                {{ t('faqTitle') || '常見問題' }}
+            </button>
+
+            <!-- FAQ彈窗 -->
+            <div class="faq-modal-overlay" v-if="showFaq" @click.self="showFaq = false">
+                <div class="faq-modal" 
+                     @mousedown="startFaqDrag" 
+                     @touchstart.prevent="startFaqDrag"
+                     :style="faqDragStyle">
+                    <div class="faq-modal-header">
+                        <span class="faq-modal-title">商戶管理員 - 常見問題（FAQ）</span>
+                        <button class="faq-modal-close" @click="showFaq = false">&times;</button>
+                    </div>
+                    <div class="faq-modal-body">
+                        <div v-for="(cat, idx) in faqData" :key="idx" 
+                             :class="['faq-category', { open: faqOpenIdx === idx }]">
+                            <div class="faq-category-header" @click="toggleFaqCategory(idx)">
+                                <span class="faq-category-num">{{ idx + 1 }}</span>
+                                <span>{{ cat.title }}</span>
+                                <span class="faq-category-arrow">▸</span>
+                            </div>
+                            <div class="faq-category-body">
+                                <div v-if="cat.questions && cat.questions.length > 0">
+                                    <div v-for="(q, qi) in cat.questions" :key="qi" 
+                                         class="faq-question"
+                                         @click="sendFaqQuestion(q)">
+                                        {{ s2t(q) }}
+                                    </div>
+                                </div>
+                                <div v-else class="faq-question-empty">無</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <!-- 歷史對話彈窗 -->
             <div class="history-modal-overlay" v-if="showHistory" @click.self="showHistory = false">
@@ -835,6 +1116,44 @@
                 open_xiaozhi_url: true,
                 maxMessages: 50,
                 showHistory: false,
+                textInput: '',
+                showFaq: false,
+                faqOpenIdx: -1,
+                faqDragStyle: {},
+                faqDragStart: null,
+                faqData: [
+                    { title: '授權商戶申請 FAQ', questions: [] },
+                    { title: '系統功能簡介 FAQ', questions: [] },
+                    { title: '定價與收入計算 FAQ', questions: [
+                        '各「授權商戶」應如何定價？什麼是「供應價」？最終結算以哪個金額為準？',
+                        '什麼是「平台分成」？',
+                        '什麼是「第三方店鋪」以及「經營收益」是指屬於什麼性質的開支？是否每筆訂單都需要扣除？',
+                        '訂單獎賞比例是否可以調整？獎賞金額如何分配使用？',
+                        '商戶結算對應的「銷售成本」具體包含哪些項目？由誰承擔？',
+                        '如何設定「會員折扣」？'
+                    ]},
+                    { title: '結算資金與時效 FAQ', questions: [
+                        '平台結算資金是否安全？有沒有資金監管機制？',
+                        '不同類型訂單的可結算時間分別是什麼？',
+                        '平台結算週期是多久？匯款有什麼限制？',
+                        '未發貨、未完成的訂單可以提前結算嗎？',
+                        '各支付渠道手續費標準為何？是否可調整？'
+                    ]},
+                    { title: '退款與售後 FAQ', questions: [
+                        '哪些場景客戶可以無條件退款？',
+                        '什麼情況下訂單無法退款、取消？',
+                        '退款的時效及費用由誰承擔？餘額不足怎麼處理？',
+                        '不可抗力導致活動取消，乙方需要退款嗎？'
+                    ]},
+                    { title: '公益捐贈 FAQ', questions: [] },
+                    { title: '優惠券/消費券 FAQ', questions: [] },
+                    { title: 'ESG Points積分 FAQ', questions: [] },
+                    { title: '會員獎賞 FAQ', questions: [] },
+                    { title: 'ESG 大使制度 FAQ', questions: [] },
+                    { title: '物流與自提 FAQ', questions: [] },
+                    { title: '兌換服務 FAQ', questions: [] },
+                    { title: '活動報名 FAQ', questions: [] }
+                ],
                 macAddress: '',
                 speakingState: 'listening',
                 currentAudio: null,
@@ -1097,6 +1416,55 @@
                 }
             },
             methods: {
+                sendTextMessage() {
+                    const text = this.textInput.trim();
+                    if (!text || !this.dataChannel) return;
+                    // 添加用户消息到聊天记录
+                    this.messages.push({ role: 'user', content: text });
+                    // 通过dataChannel发送文字消息
+                    this.dataChannel.send(JSON.stringify({ type: 'text-input', text: text }));
+                    this.textInput = '';
+                },
+                toggleFaqCategory(idx) {
+                    this.faqOpenIdx = this.faqOpenIdx === idx ? -1 : idx;
+                },
+                sendFaqQuestion(question) {
+                    this.showFaq = false;
+                    this.faqOpenIdx = -1;
+                    // 设置文字输入框的内容并发送
+                    this.textInput = question;
+                    this.$nextTick(() => { this.sendTextMessage(); });
+                },
+                startFaqDrag(e) {
+                    if (e.target.closest('.faq-modal-header') || e.target.closest('.faq-modal-body')) return;
+                    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                    this.faqDragStart = { x: clientX, y: clientY, startX: 0, startY: 0 };
+                    this.faqDragStyle = { position: 'relative' };
+                    const onMove = (ev) => {
+                        const cx = ev.touches ? ev.touches[0].clientX : ev.clientX;
+                        const cy = ev.touches ? ev.touches[0].clientY : ev.clientY;
+                        if (!this.faqDragStart.startX) {
+                            this.faqDragStart.startX = cx - this.faqDragStart.x;
+                            this.faqDragStart.startY = cy - this.faqDragStart.y;
+                        }
+                        this.faqDragStyle = { 
+                            position: 'relative',
+                            transform: `translate(${cx - this.faqDragStart.x - this.faqDragStart.startX}px, ${cy - this.faqDragStart.y - this.faqDragStart.startY}px)` 
+                        };
+                    };
+                    const onEnd = () => {
+                        this.faqDragStart = null;
+                        document.removeEventListener('mousemove', onMove);
+                        document.removeEventListener('mouseup', onEnd);
+                        document.removeEventListener('touchmove', onMove);
+                        document.removeEventListener('touchend', onEnd);
+                    };
+                    document.addEventListener('mousemove', onMove);
+                    document.addEventListener('mouseup', onEnd);
+                    document.addEventListener('touchmove', onMove, { passive: true });
+                    document.addEventListener('touchend', onEnd);
+                },
                 t(key) {
                     return this.i18n[this.currentLanguage][key] || key;
                 },

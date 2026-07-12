@@ -123,6 +123,14 @@ async def server(pc, offer):
                 return
             message = json.loads(message)
 
+            # 处理文字输入消息
+            if message.get("type") == "text-input":
+                text_content = message.get("text", "")
+                if text_content:
+                    logger.info("收到文字输入 [%s]: %s", pc.mac_address, text_content)
+                    await xiaozhi.server.send_wake_word(text_content)
+                return
+
             send_text_dict = {
                 "doublehit": {
                     "Head": "拍了拍你的头",
