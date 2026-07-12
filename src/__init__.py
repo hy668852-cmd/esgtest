@@ -119,16 +119,17 @@ async def server(pc, offer):
             if xiaozhi.server is None:
                 await xiaozhi.start()
 
-            if xiaozhi.server.output_audio_queue:
-                return
             message = json.loads(message)
 
-            # 处理文字输入消息
+            # 处理文字输入消息（不检查output_audio_queue，确保文字消息始终能送达）
             if message.get("type") == "text-input":
                 text_content = message.get("text", "")
                 if text_content:
                     logger.info("收到文字输入 [%s]: %s", pc.mac_address, text_content)
                     await xiaozhi.server.send_wake_word(text_content)
+                return
+
+            if xiaozhi.server.output_audio_queue:
                 return
 
             send_text_dict = {

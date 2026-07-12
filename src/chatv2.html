@@ -1058,7 +1058,7 @@
                                     <div v-for="(q, qi) in cat.questions" :key="qi" 
                                          class="faq-question"
                                          @click="sendFaqQuestion(q)">
-                                        {{ s2t(q) }}
+                                        <span style="color:#2e7d32;font-weight:700;margin-right:4px;">{{ ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩'][qi] || (qi+1) }}.</span>{{ s2t(q) }}
                                     </div>
                                 </div>
                                 <div v-else class="faq-question-empty">無</div>
