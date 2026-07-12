@@ -508,27 +508,28 @@ function onMove(e) {
         const cy = e.touches ? e.touches[0].clientY : e.clientY;
         const dx = cx - resizeStart.x, dy = cy - resizeStart.y;
         const s = resizeStart;
-        let newL = s.left, newT = s.top, newW = s.width, newH = s.height;
-
-        if (resizeDir.includes('e')) newW = Math.max(30, s.width + dx);
-        if (resizeDir.includes('w')) { newW = Math.max(30, s.width - dx); newL = s.left + s.width - newW; }
-        if (resizeDir.includes('s')) newH = Math.max(20, s.height + dy);
-        if (resizeDir.includes('n')) { newH = Math.max(20, s.height - dy); newT = s.top + s.height - newH; }
-
         const p = document.getElementById('preview').getBoundingClientRect();
-        resizing.style.left = (newL - p.left) + 'px';
-        resizing.style.top = (newT - p.top) + 'px';
-        resizing.style.right = '';
-        resizing.style.bottom = '';
-        resizing.style.width = newW + 'px';
-        resizing.style.height = newH + 'px';
+        let newL = s.left - p.left, newT = s.top - p.top, newW = s.width, newH = s.height;
+
+        // 計算新的尺寸
+        if (resizeDir.includes('e')) newW = Math.max(30, s.width + dx);
+        if (resizeDir.includes('w')) { newW = Math.max(30, s.width - dx); newL = (s.left - p.left) + s.width - newW; }
+        if (resizeDir.includes('s')) newH = Math.max(20, s.height + dy);
+        if (resizeDir.includes('n')) { newH = Math.max(20, s.height - dy); newT = (s.top - p.top) + s.height - newH; }
+
+        // 轉為百分比定位
+        const leftPct = (newL / p.width * 100).toFixed(1);
+        const topPct = (newT / p.height * 100).toFixed(1);
+        if (topPct < 50) { resizing.style.top = topPct + '%'; resizing.style.bottom = ''; }
+        else { resizing.style.bottom = (100 - parseFloat(topPct)).toFixed(1) + '%'; resizing.style.top = ''; }
+        if (leftPct < 50) { resizing.style.left = leftPct + '%'; resizing.style.right = ''; }
+        else { resizing.style.right = (100 - parseFloat(leftPct)).toFixed(1) + '%'; resizing.style.left = ''; }
+        resizing.style.width = Math.round(newW) + 'px';
+        resizing.style.height = Math.round(newH) + 'px';
 
         // 內部圖片跟隨容器大小
         const img = resizing.querySelector('img');
         if (img) { img.style.width = '100%'; img.style.height = '100%'; }
-        // 內部背景跟隨
-        const bgInner = resizing.querySelector('.bg-inner');
-        if (bgInner) { /* bg-inner already 100% via CSS */ }
 
         showGuides(resizing);
         generateCss();
