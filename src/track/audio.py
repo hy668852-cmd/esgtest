@@ -1,5 +1,7 @@
 from fractions import Fraction
 
+import collections
+
 import av
 import numpy as np
 from aiortc import AudioStreamTrack
@@ -21,33 +23,52 @@ class AudioFaceSwapper(AudioStreamTrack):
         # 初始化回声消除管理器（禁用服务端回声消除，浏览器端已有足够的回声消除能力）
         self.echo_manager = EchoCancellationManager(enable_echo_cancellation=False, enable_debug=False)
 
-        # Jitter buffer：积累一定帧数后再播放，吸收TTS音频到达不均匀导致的卡顿
-        self._jitter_buffer = []
-        self._jitter_min_frames = 8   # 开始播放前至少积累8帧（约160ms缓冲）
-        self._jitter_started = False
-        self._last_samples = None      # 上一帧音频，queue为空时重复播放避免静音断层
-        self._was_empty = True         # 上一周期queue是否为空，用于检测TTS新一轮开始
+        # Playback buffer：使用deque，O(1) 的 popleft 操作，maxlen 防止内存溢出
+        self._playback_buffer = collections.deque(maxlen=200)
+        self._min_buffer_frames = 20   # 预缓冲20帧 = 约400ms，能吸收更大的TTS延迟抖动
+        self._playback_started = False
+        self._silence_samples = np.zeros(960, dtype=np.int16)  # 预生成静音帧，避免每次重复创建
+        self._empty_cycles = 0         # buffer连续为空的周期计数
+        self._max_empty_cycles = 25    # 25 * 20ms = 500ms，超过则认为本轮TTS结束，下一轮重新预缓冲
 
-    def _reset_jitter(self):
-        """当检测到新一轮TTS开始时重置jitter buffer"""
-        self._jitter_buffer.clear()
-        self._jitter_started = False
-        self._last_samples = None
+    def _create_frame(self, samples, pts, time_base):
+        """创建音频帧"""
+        frame = av.AudioFrame.from_ndarray(
+            samples.reshape(1, -1),
+            format="s16",
+            layout="mono",
+        )
+        frame.sample_rate = self.sample_rate
+        frame.pts = pts
+        frame.time_base = time_base
+        return frame
 
-    def empty_frame(self):
-        samples = np.zeros(960, dtype=np.float32)
-        samples = (samples * 32767).astype(np.int16)
-        new_frame = av.AudioFrame.from_ndarray(samples.reshape(1, -1), format="s16", layout="mono")
-        new_frame.sample_rate = self.sample_rate
-        new_frame.pts = 0
-        return new_frame
+    def _get_silence_frame(self, pts, time_base):
+        """返回静音帧"""
+        return self._create_frame(self._silence_samples, pts, time_base)
+
+    def _fill_buffer(self):
+        """将SDK queue中的所有帧拉取到playback buffer"""
+        if not self.xiaozhi.server:
+            return
+        while self.xiaozhi.server.output_audio_queue:
+            try:
+                self._playback_buffer.append(self.xiaozhi.server.output_audio_queue.popleft())
+            except (IndexError, Exception):
+                break
+
+    def _pop_frame(self):
+        """从buffer取一帧，如果buffer空返回None"""
+        if self._playback_buffer:
+            return self._playback_buffer.popleft()
+        return None
 
     async def recv(self):
         # 接收原始音频帧
         original_frame = await self.track.recv()
 
         if not self.xiaozhi.server:
-            return self.empty_frame()
+            return self._get_silence_frame(original_frame.pts, original_frame.time_base)
 
         pcm_data = np.frombuffer(original_frame.planes[0], dtype=np.int16)
 
@@ -58,70 +79,34 @@ class AudioFaceSwapper(AudioStreamTrack):
         await self.xiaozhi.server.send_audio(cleaned_pcm_data.tobytes())
 
         if not self.xiaozhi.server:
-            return self.empty_frame()
+            return self._get_silence_frame(original_frame.pts, original_frame.time_base)
 
-        # 处理服务端返回的音频
-        if self.xiaozhi.server and self.xiaozhi.server.output_audio_queue:
+        # 从SDK queue拉取所有可用帧到playback buffer
+        self._fill_buffer()
 
-            # 将SDK queue中的音频帧全部转移到jitter buffer
-            while self.xiaozhi.server.output_audio_queue:
-                try:
-                    self._jitter_buffer.append(self.xiaozhi.server.output_audio_queue.popleft())
-                except (IndexError, Exception):
-                    break
-
-            # 检测新一轮TTS开始：之前queue为空，现在有数据了
-            if self._was_empty and not self._jitter_started:
-                self._reset_jitter()
-                # 重新把刚才收集的帧放入（_reset_jitter清空了buffer）
-                while self.xiaozhi.server.output_audio_queue:
-                    try:
-                        self._jitter_buffer.append(self.xiaozhi.server.output_audio_queue.popleft())
-                    except (IndexError, Exception):
-                        break
-
-            self._was_empty = False
-
-            # Jitter buffer尚未积累够最小帧数，返回静音等待（预缓冲阶段）
-            if not self._jitter_started:
-                if len(self._jitter_buffer) < self._jitter_min_frames:
-                    return self.empty_frame()
-                # 积累够了，开始播放
-                self._jitter_started = True
-
-            # 从jitter buffer取一帧播放
-            if self._jitter_buffer:
-                samples = self._jitter_buffer.pop(0)
-                self._last_samples = samples
-            elif self._last_samples is not None:
-                # queue暂时为空，重复上一帧避免静音断层（用户听不到停顿）
-                samples = self._last_samples
+        # 预缓冲阶段：尚未积累足够帧，返回静音
+        if not self._playback_started:
+            if len(self._playback_buffer) >= self._min_buffer_frames:
+                self._playback_started = True
             else:
-                return self.empty_frame()
+                return self._get_silence_frame(original_frame.pts, original_frame.time_base)
 
+        # 从buffer取一帧播放
+        samples = self._pop_frame()
+        if samples is not None:
+            self._empty_cycles = 0
             # 更新回声消除管理器的参考音频
             self.echo_manager.update_reference_audio(samples)
+            return self._create_frame(samples, original_frame.pts, original_frame.time_base)
 
-            # 创建音频帧返回给客户端
-            new_frame = av.AudioFrame.from_ndarray(
-                samples.reshape(1, -1),
-                format="s16",
-                layout="mono",
-            )
-            new_frame.sample_rate = self.sample_rate
-            new_frame.pts = original_frame.pts
-            new_frame.time_base = Fraction(1, self.sample_rate)
+        # buffer空了：播放静音（不再重复上一帧，避免噪音）
+        self._empty_cycles += 1
+        if self._empty_cycles > self._max_empty_cycles:
+            # 连续空了超过500ms，认为本轮TTS结束，下一轮重新预缓冲
+            self._playback_started = False
+            self._empty_cycles = 0
 
-            return new_frame
-
-        # queue为空状态
-        self._was_empty = True
-
-        # TTS播放结束后重置jitter
-        if self._jitter_started:
-            self._reset_jitter()
-
-        return self.empty_frame()
+        return self._get_silence_frame(original_frame.pts, original_frame.time_base)
 
     def get_echo_cancellation_stats(self):
         """获取回声消除统计信息"""
