@@ -982,11 +982,11 @@
 
                 <!-- 文字输入区域 -->
                 <div class="text-input-container" v-if="isStarted && isConnected">
-                    <input type="text" class="text-input-box" 
+                    <input type="text" class="text-input-box" ref="textInputBox"
                            v-model="textInput" 
                            :placeholder="t('textInputPlaceholder') || '輸入文字訊息…'"
                            @keydown.enter="sendTextMessage">
-                    <button class="text-send-btn" @click="sendTextMessage" :disabled="!textInput.trim()">
+                    <button class="text-send-btn" ref="textSendBtn" @click="sendTextMessage" :disabled="!textInput.trim()">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
                         </svg>
@@ -1440,9 +1440,13 @@
                 sendFaqQuestion(question) {
                     this.showFaq = false;
                     this.faqOpenIdx = -1;
-                    // 复制到文本框并延迟发送，确保DOM和状态都就绪
+                    // 将文本填入输入框
                     this.textInput = question;
-                    setTimeout(() => { this.sendTextMessage(); }, 300);
+                    // 延迟后通过ref模拟点击发送按钮，完全等同用户手动操作
+                    setTimeout(() => {
+                        const btn = this.$refs.textSendBtn;
+                        if (btn) { btn.click(); }
+                    }, 500);
                 },
                 startFaqDrag(e) {
                     if (e.target.closest('.faq-modal-header') || e.target.closest('.faq-modal-body')) return;
