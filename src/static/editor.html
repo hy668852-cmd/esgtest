@@ -8,363 +8,181 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #1a1a2e; color: #eee; padding: 10px; }
 
-/* 顶部工具栏 */
-.toolbar {
-    max-width: 100%;
-    margin: 0 auto 12px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-    justify-content: center;
-}
-.toolbar button {
-    padding: 6px 14px;
-    border: 1px solid #444;
-    background: #0f3460;
-    color: #eee;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 12px;
-    transition: all 0.15s;
-}
+.toolbar { max-width: 100%; margin: 0 auto 10px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.toolbar button { padding: 5px 12px; border: 1px solid #444; background: #0f3460; color: #eee; border-radius: 6px; cursor: pointer; font-size: 11px; }
 .toolbar button.active { background: #e94560; border-color: #e94560; }
-.toolbar .device-label { font-size: 12px; color: #888; margin-right: 4px; }
-.toolbar .width-input {
-    width: 60px; padding: 4px 6px; background: #0a0a1a; color: #0f0;
-    border: 1px solid #333; border-radius: 6px; font-size: 12px; text-align: center;
-}
+.toolbar .device-label { font-size: 11px; color: #888; }
+.toolbar .width-input { width: 55px; padding: 3px 5px; background: #0a0a1a; color: #0f0; border: 1px solid #333; border-radius: 5px; font-size: 11px; text-align: center; }
 
-/* 預覽外框 */
-.preview-wrapper {
-    display: flex;
-    justify-content: center;
-    margin: 0 auto;
-}
-
-/* 預覽區域 */
-.preview-frame {
-    height: 85vh;
-    border: 2px solid #444;
-    border-radius: 12px;
-    overflow: hidden;
-    position: relative;
-    background: #f1e6aa;
-    transition: width 0.3s ease;
-}
+.preview-wrapper { display: flex; justify-content: center; margin: 0 auto; }
+.preview-frame { height: 85vh; border: 2px solid #444; border-radius: 12px; overflow: hidden; position: relative; background: #f1e6aa; transition: width 0.3s ease; }
 .preview-frame.mobile { width: 390px; }
 .preview-frame.desktop { width: 100%; max-width: 1280px; }
-.preview-frame.custom { /* width set by JS */ }
 
-/* 可拖拽元素通用樣式 */
-.draggable {
-    position: absolute;
-    cursor: move;
-    border: 2px dashed transparent;
-    transition: border-color 0.2s;
-    user-select: none;
-}
-.draggable:hover, .draggable.active {
-    border-color: #ff6b6b;
-}
-.draggable img {
-    display: block;
-    pointer-events: none;
-}
-.resize-handle {
-    position: absolute;
-    bottom: -8px;
-    right: -8px;
-    width: 16px;
-    height: 16px;
-    background: #ff6b6b;
-    border-radius: 50%;
-    cursor: se-resize;
-    display: none;
-    z-index: 100;
-}
-.draggable:hover .resize-handle,
-.draggable.active .resize-handle {
-    display: block;
-}
+/* 對齊輔助線 */
+.guide-line { position: absolute; z-index: 9999; pointer-events: none; display: none; }
+.guide-h { left: 0; right: 0; height: 1px; background: rgba(255, 0, 100, 0.6); }
+.guide-v { top: 0; bottom: 0; width: 1px; background: rgba(255, 0, 100, 0.6); }
+.guide-center-h { left: 0; right: 0; height: 1px; top: 50%; background: rgba(0, 200, 255, 0.35); border-top: 1px dashed rgba(0, 200, 255, 0.35); }
+.guide-center-v { top: 0; bottom: 0; width: 1px; left: 50%; background: rgba(0, 200, 255, 0.35); border-left: 1px dashed rgba(0, 200, 255, 0.35); }
+
+/* 可拖拽元素 */
+.draggable { position: absolute; cursor: move; border: 2px dashed transparent; transition: border-color 0.15s; user-select: none; }
+.draggable:hover, .draggable.active { border-color: #ff6b6b; }
+.draggable img { display: block; pointer-events: none; width: 100%; height: 100%; object-fit: contain; }
+
+/* 縮放手柄 - 八個方向 */
+.resize-handle { position: absolute; width: 14px; height: 14px; background: #ff6b6b; border: 2px solid #fff; border-radius: 50%; cursor: se-resize; display: none; z-index: 100; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+.resize-handle.nw { top: -7px; left: -7px; cursor: nw-resize; }
+.resize-handle.n { top: -7px; left: 50%; margin-left: -7px; cursor: n-resize; }
+.resize-handle.ne { top: -7px; right: -7px; cursor: ne-resize; }
+.resize-handle.w { top: 50%; margin-top: -7px; left: -7px; cursor: w-resize; }
+.resize-handle.e { top: 50%; margin-top: -7px; right: -7px; cursor: e-resize; }
+.resize-handle.sw { bottom: -7px; left: -7px; cursor: sw-resize; }
+.resize-handle.s { bottom: -7px; left: 50%; margin-left: -7px; cursor: s-resize; }
+.resize-handle.se { bottom: -7px; right: -7px; cursor: se-resize; }
+.draggable:hover .resize-handle, .draggable.active .resize-handle { display: block; }
 
 /* 模擬元素 */
-.sim-bg-image {
-    top: 0; left: 0; width: 100%; height: 100%;
-    background-size: contain;
-    background-position: left center;
-    background-repeat: no-repeat;
-    cursor: default !important;
-    border: none !important;
-}
-.sim-bg-image:hover { border: none !important; }
-.sim-bg-image .resize-handle { display: none !important; }
+.bg-wrapper { top: 1.9%; left: 2.1%; width: 412.141px; height: 791.984px; }
+.bg-wrapper .bg-inner { width: 100%; height: 100%; background-image: url('/static/images/goody_bg.png'); background-size: contain; background-position: center; background-repeat: no-repeat; pointer-events: none; }
 
-/* bg-image 用一个 wrapper 来控制缩放 */
-.bg-wrapper {
-    top: 0; left: 0;
-    width: 60%;
-    height: 80%;
-}
-.bg-wrapper .bg-inner {
-    width: 100%;
-    height: 100%;
-    background-image: url('/static/images/goody_bg.png');
-    background-size: contain;
-    background-position: center;
-    background-repeat: no-repeat;
-    pointer-events: none;
-}
+.sim-logo-image { top: 0.8%; right: 3.6%; width: 423.172px; height: 248px; }
 
-.sim-logo-image {
-    top: 6%; right: 3%;
-    height: 220px;
-    width: auto;
-}
-.sim-logo-image img { height: 100%; width: auto; object-fit: contain; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15)); }
+.sim-esga-logo { top: 30.6%; left: 25.6%; width: 1504px; height: 262.547px; }
 
-.sim-esga-logo {
-    top: calc(6% + 230px); right: 5%;
-    height: 170px;
-    width: auto;
-}
-.sim-esga-logo img { height: 100%; width: auto; object-fit: contain; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15)); }
+.sim-history-btn { top: 3%; left: 3.8%; background: rgba(255,255,255,0.92); border-radius: 22px; display: flex; align-items: center; justify-content: center; gap: 4px; box-shadow: 0 2px 10px rgba(0,0,0,0.15); overflow: hidden; }
+.sim-history-btn .btn-text { font-size: 13px; font-weight: 600; color: #333; white-space: nowrap; }
+.sim-history-btn svg { flex-shrink: 0; }
 
-.sim-history-btn {
-    top: 15px; left: 15px;
-    background: rgba(255,255,255,0.92);
-    border-radius: 22px;
-    padding: 8px 16px;
-    font-size: 13px;
-    font-weight: 600;
-    color: #333;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    white-space: nowrap;
-}
+.sim-faq-btn { top: 3%; left: 13.5%; background: rgba(255,255,255,0.92); border-radius: 22px; display: flex; align-items: center; justify-content: center; gap: 4px; box-shadow: 0 2px 10px rgba(0,0,0,0.15); overflow: hidden; }
+.sim-faq-btn .btn-text { font-size: 13px; font-weight: 600; color: #333; white-space: nowrap; }
+.sim-faq-btn svg { flex-shrink: 0; }
 
-.sim-faq-btn {
-    top: 15px; left: calc(15px + 130px);
-    background: rgba(255,255,255,0.92);
-    border-radius: 22px;
-    padding: 8px 16px;
-    font-size: 13px;
-    font-weight: 600;
-    color: #333;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    white-space: nowrap;
-}
+.sim-text-input { bottom: 17.8%; left: 34.3%; width: 370px; height: 30px; display: flex; align-items: center; gap: 6px; overflow: hidden; }
+.sim-text-input input { flex: 1; padding: 6px 12px; border-radius: 20px; border: 2px solid rgba(0,0,0,0.15); background: rgba(255,255,255,0.92); font-size: 12px; outline: none; min-width: 0; }
+.sim-text-input button { width: 30px; height: 30px; border-radius: 50%; background: rgba(0,0,0,0.8); color: #fff; border: none; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 
-.sim-text-input {
-    bottom: 8%; left: 5%;
-    width: 320px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.sim-text-input input {
-    flex: 1;
-    padding: 10px 16px;
-    border-radius: 24px;
-    border: 2px solid rgba(0,0,0,0.15);
-    background: rgba(255,255,255,0.92);
-    font-size: 14px;
-    outline: none;
-}
-.sim-text-input button {
-    width: 40px; height: 40px;
-    border-radius: 50%;
-    background: rgba(0,0,0,0.8);
-    color: #fff;
-    border: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-
-.sim-push-to-talk {
-    bottom: 6%; right: 6%;
-}
-.sim-ptt-btn {
-    width: 90px; height: 90px;
-    border-radius: 50%;
-    background: rgba(0,0,0,0.8);
-    color: #fff;
-    border: 3px solid rgba(255,255,255,0.3);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    gap: 4px;
-}
+.sim-push-to-talk { bottom: 19.3%; right: 20.6%; width: 194.938px; height: 72.9688px; }
+.sim-ptt-btn { width: 100%; height: 100%; border-radius: 50%; background: rgba(0,0,0,0.8); color: #fff; border: 3px solid rgba(255,255,255,0.3); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; overflow: hidden; }
+.sim-ptt-btn svg { flex-shrink: 0; }
+.sim-ptt-btn .ptt-text { font-size: 11px; white-space: nowrap; }
 
 /* 消息氣泡 */
-.sim-message-area {
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    width: 380px;
-    max-width: 70%;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    pointer-events: none;
-    cursor: default !important;
-    border: none !important;
-    z-index: 500;
-}
+.sim-message-area { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 380px; max-width: 70%; display: flex; flex-direction: column; gap: 8px; pointer-events: none; cursor: default !important; border: none !important; z-index: 500; }
 .sim-message-area:hover { border: none !important; }
-.sim-msg {
-    padding: 10px 16px;
-    border-radius: 18px;
-    font-size: 14px;
-    max-width: 80%;
-    line-height: 1.4;
-}
-.sim-msg.assistant { background: rgba(255,255,255,0.85); color: #333; align-self: flex-start; border-bottom-left-radius: 4px; }
-.sim-msg.user { background: rgba(46,125,50,0.9); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
+.sim-msg { padding: 10px 16px; border-radius: 18px; font-size: 14px; max-width: 80%; line-height: 1.4; }
+.sim-msg.assistant { background: rgba(255,255,255,0.85); color: #333; align-self: flex-start; }
+.sim-msg.user { background: rgba(46,125,50,0.9); color: #fff; align-self: flex-end; }
 
 /* 控制面板 */
-.controls {
-    max-width: 520px;
-    margin: 12px auto;
-    background: #16213e;
-    border-radius: 12px;
-    padding: 14px;
-}
-.controls h3 {
-    margin-bottom: 10px;
-    font-size: 14px;
-    color: #0f3460;
-    background: #e94560;
-    display: inline-block;
-    padding: 3px 10px;
-    border-radius: 6px;
-}
-.control-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 6px;
-    font-size: 12px;
-}
-.control-row label { min-width: 80px; color: #aaa; }
-.control-row input[type="range"] { flex: 1; max-width: 200px; }
-.control-row .val { min-width: 50px; text-align: right; color: #e94560; font-weight: 600; font-size: 11px; }
-.element-selector { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
-.element-selector button {
-    padding: 5px 10px; border: 1px solid #444; background: #0f3460; color: #eee;
-    border-radius: 6px; cursor: pointer; font-size: 11px; transition: all 0.15s;
-}
+.controls { max-width: 520px; margin: 10px auto; background: #16213e; border-radius: 12px; padding: 12px; }
+.controls h3 { margin-bottom: 8px; font-size: 13px; color: #fff; background: #e94560; display: inline-block; padding: 3px 10px; border-radius: 6px; }
+.control-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; font-size: 11px; }
+.control-row label { min-width: 70px; color: #aaa; }
+.control-row input[type="range"] { flex: 1; max-width: 180px; }
+.control-row .val { min-width: 48px; text-align: right; color: #e94560; font-weight: 600; font-size: 10px; }
+.element-selector { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+.element-selector button { padding: 4px 8px; border: 1px solid #444; background: #0f3460; color: #eee; border-radius: 5px; cursor: pointer; font-size: 10px; }
 .element-selector button.active { background: #e94560; border-color: #e94560; }
 
-/* 導出 */
-.export-section {
-    max-width: 520px; margin: 12px auto; background: #16213e; border-radius: 12px; padding: 14px;
-}
-.export-section textarea {
-    width: 100%; height: 100px; background: #0a0a1a; color: #0f0;
-    font-family: 'Courier New', monospace; font-size: 10px;
-    border: 1px solid #333; border-radius: 8px; padding: 8px; resize: vertical;
-}
-.export-section button {
-    margin-top: 6px; padding: 6px 16px; background: #e94560; color: #fff;
-    border: none; border-radius: 6px; cursor: pointer; font-size: 12px;
-}
-.copy-toast {
-    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-    background: #e94560; color: #fff; padding: 8px 20px; border-radius: 8px;
-    font-size: 13px; z-index: 9999; opacity: 0; transition: opacity 0.3s; pointer-events: none;
-}
+.export-section { max-width: 520px; margin: 10px auto; background: #16213e; border-radius: 12px; padding: 12px; }
+.export-section h3 { margin-bottom: 8px; font-size: 13px; color: #fff; }
+.export-section textarea { width: 100%; height: 80px; background: #0a0a1a; color: #0f0; font-family: 'Courier New', monospace; font-size: 10px; border: 1px solid #333; border-radius: 6px; padding: 8px; resize: vertical; }
+.export-section button { margin-top: 6px; padding: 5px 14px; background: #e94560; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; }
+.copy-toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: #e94560; color: #fff; padding: 6px 16px; border-radius: 6px; font-size: 12px; z-index: 99999; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
 .copy-toast.show { opacity: 1; }
-.hint { max-width: 520px; margin: 6px auto; font-size: 11px; color: #666; text-align: center; }
+.hint { max-width: 520px; margin: 4px auto; font-size: 10px; color: #666; text-align: center; }
 </style>
 </head>
 <body>
 
 <div class="copy-toast" id="toast">已複製到剪貼板</div>
 
-<!-- 顶部工具栏 -->
 <div class="toolbar">
-    <span class="device-label">預覽設備：</span>
-    <button id="btn-mobile" class="active" onclick="switchDevice('mobile')">手機端 (390px)</button>
-    <button id="btn-desktop" onclick="switchDevice('desktop')">電腦端 (1280px)</button>
-    <span class="device-label" style="margin-left:12px;">自定義寬度：</span>
+    <span class="device-label">預覽：</span>
+    <button id="btn-mobile" class="active" onclick="switchDevice('mobile')">手機端</button>
+    <button id="btn-desktop" onclick="switchDevice('desktop')">電腦端</button>
+    <span class="device-label" style="margin-left:8px;">寬度:</span>
     <input type="number" class="width-input" id="customWidth" placeholder="px" min="200" max="1920">
     <button onclick="switchDevice('custom')">應用</button>
 </div>
 
-<!-- 預覽區 -->
 <div class="preview-wrapper">
 <div class="preview-frame mobile" id="preview">
-    <!-- 貓咪背景（可縮放） -->
+    <!-- 中線輔助線（始終可見） -->
+    <div class="guide-line guide-center-h"></div>
+    <div class="guide-line guide-center-v"></div>
+    <!-- 動態邊緣對齊線 -->
+    <div class="guide-line guide-h" id="guideH1"></div>
+    <div class="guide-line guide-h" id="guideH2"></div>
+    <div class="guide-line guide-v" id="guideV1"></div>
+    <div class="guide-line guide-v" id="guideV2"></div>
+
     <div class="bg-wrapper draggable" data-name="bg-image">
         <div class="bg-inner"></div>
-        <div class="resize-handle"></div>
+        <div class="resize-handle nw"></div><div class="resize-handle n"></div><div class="resize-handle ne"></div>
+        <div class="resize-handle w"></div><div class="resize-handle e"></div>
+        <div class="resize-handle sw"></div><div class="resize-handle s"></div><div class="resize-handle se"></div>
     </div>
 
-    <!-- SDG Logo -->
     <div class="sim-logo-image draggable" data-name="logo-image">
         <img src="/static/images/sdg_logo.png" alt="SDG Logo">
-        <div class="resize-handle"></div>
+        <div class="resize-handle nw"></div><div class="resize-handle n"></div><div class="resize-handle ne"></div>
+        <div class="resize-handle w"></div><div class="resize-handle e"></div>
+        <div class="resize-handle sw"></div><div class="resize-handle s"></div><div class="resize-handle se"></div>
     </div>
 
-    <!-- ESGA Logo -->
     <div class="sim-esga-logo draggable" data-name="esga-logo">
         <img src="/static/images/esga_logo.png" alt="ESGA Logo">
-        <div class="resize-handle"></div>
+        <div class="resize-handle nw"></div><div class="resize-handle n"></div><div class="resize-handle ne"></div>
+        <div class="resize-handle w"></div><div class="resize-handle e"></div>
+        <div class="resize-handle sw"></div><div class="resize-handle s"></div><div class="resize-handle se"></div>
     </div>
 
-    <!-- 歷史對話 -->
     <div class="sim-history-btn draggable" data-name="history-btn">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-        歷史對話
-        <div class="resize-handle"></div>
+        <span class="btn-text">歷史對話</span>
+        <div class="resize-handle nw"></div><div class="resize-handle n"></div><div class="resize-handle ne"></div>
+        <div class="resize-handle w"></div><div class="resize-handle e"></div>
+        <div class="resize-handle sw"></div><div class="resize-handle s"></div><div class="resize-handle se"></div>
     </div>
 
-    <!-- 常見問題 -->
     <div class="sim-faq-btn draggable" data-name="faq-btn">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        常見問題
-        <div class="resize-handle"></div>
+        <span class="btn-text">常見問題</span>
+        <div class="resize-handle nw"></div><div class="resize-handle n"></div><div class="resize-handle ne"></div>
+        <div class="resize-handle w"></div><div class="resize-handle e"></div><div class="resize-handle sw"></div><div class="resize-handle s"></div><div class="resize-handle se"></div>
     </div>
 
-    <!-- 消息氣泡 -->
     <div class="sim-message-area">
         <div class="sim-msg assistant">你好！我是Goody，有什麼可以幫你的嗎？</div>
         <div class="sim-msg user">什麼是ESG？</div>
         <div class="sim-msg assistant">ESG是環境、社會和治理的英文縮寫...</div>
     </div>
 
-    <!-- 文字輸入 -->
     <div class="sim-text-input draggable" data-name="text-input">
         <input type="text" placeholder="輸入文字訊息…" readonly>
-        <button><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
-        <div class="resize-handle"></div>
+        <button><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+        <div class="resize-handle nw"></div><div class="resize-handle n"></div><div class="resize-handle ne"></div>
+        <div class="resize-handle w"></div><div class="resize-handle e"></div>
+        <div class="resize-handle sw"></div><div class="resize-handle s"></div><div class="resize-handle se"></div>
     </div>
 
-    <!-- 按住說話 -->
     <div class="sim-push-to-talk draggable" data-name="push-to-talk">
         <div class="sim-ptt-btn">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
-            按住說話
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+            <span class="ptt-text">按住說話</span>
         </div>
-        <div class="resize-handle"></div>
+        <div class="resize-handle nw"></div><div class="resize-handle n"></div><div class="resize-handle ne"></div>
+        <div class="resize-handle w"></div><div class="resize-handle e"></div>
+        <div class="resize-handle sw"></div><div class="resize-handle s"></div><div class="resize-handle se"></div>
     </div>
 </div>
 </div>
 
-<p class="hint">拖拽元素移動位置 · 拖拽右下角紅點調整大小 · 選擇元素後用滑塊精確調整</p>
+<p class="hint">拖拽移動 · 紅點8方向縮放（所有元素均可縮放） · 藍色虛線為頁面中線 · 拖拽時顯示粉色邊緣對齊線（自動吸附6px）</p>
 
-<!-- 元素選擇 + 滑塊 -->
 <div class="controls">
     <h3>選擇元素</h3>
     <div class="element-selector" id="elementSelector">
@@ -381,15 +199,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
         <div class="control-row"><label>bottom</label><input type="range" id="s-bottom" min="-20" max="120" value="0" step="0.5"><span class="val" id="v-bottom">—</span></div>
         <div class="control-row"><label>left</label><input type="range" id="s-left" min="-20" max="120" value="0" step="0.5"><span class="val" id="v-left">—</span></div>
         <div class="control-row"><label>right</label><input type="range" id="s-right" min="-20" max="120" value="0" step="0.5"><span class="val" id="v-right">—</span></div>
-        <div class="control-row"><label>height</label><input type="range" id="s-height" min="30" max="800" value="200" step="5"><span class="val" id="v-height">—</span></div>
-        <div class="control-row"><label>width</label><input type="range" id="s-width" min="30" max="1200" value="300" step="5"><span class="val" id="v-width">—</span></div>
+        <div class="control-row"><label>height</label><input type="range" id="s-height" min="20" max="900" value="200" step="1"><span class="val" id="v-height">—</span></div>
+        <div class="control-row"><label>width</label><input type="range" id="s-width" min="20" max="1600" value="300" step="1"><span class="val" id="v-width">—</span></div>
         <div class="control-row"><label>opacity</label><input type="range" id="s-opacity" min="0" max="1" value="1" step="0.05"><span class="val" id="v-opacity">1</span></div>
+        <div class="control-row" id="fontSizeRow"><label>font-size</label><input type="range" id="s-fontsize" min="8" max="48" value="13" step="1"><span class="val" id="v-fontsize">13px</span></div>
     </div>
 </div>
 
-<!-- CSS 導出 -->
 <div class="export-section">
-    <h3 style="margin-bottom:8px;font-size:14px;color:#0f3460;background:#e94560;display:inline-block;padding:3px 10px;border-radius:6px;">導出 CSS</h3>
+    <h3>導出 CSS</h3>
     <textarea id="cssOutput" readonly></textarea>
     <button onclick="copyCss()">複製 CSS</button>
     <button onclick="resetAll()" style="background:#0f3460;margin-left:6px;">重置</button>
@@ -397,29 +215,32 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; b
 
 <script>
 let activeEl = 'bg-image';
-let dragging = null, resizing = null;
+let dragging = null, resizing = null, resizeDir = '';
 let dragOffset = { x: 0, y: 0 };
+let resizeStart = { x: 0, y: 0, rect: null, style: null };
+const SNAP_THRESHOLD = 6;
 
-// 設備切換
+// 邊緣對齊線元素
+const guideH1 = document.getElementById('guideH1');
+const guideH2 = document.getElementById('guideH2');
+const guideV1 = document.getElementById('guideV1');
+const guideV2 = document.getElementById('guideV2');
+
 function switchDevice(type) {
-    const preview = document.getElementById('preview');
-    preview.classList.remove('mobile', 'desktop', 'custom');
+    const p = document.getElementById('preview');
+    p.classList.remove('mobile', 'desktop', 'custom');
     if (type === 'custom') {
         const w = parseInt(document.getElementById('customWidth').value) || 390;
-        preview.style.width = Math.max(200, Math.min(1920, w)) + 'px';
-        preview.classList.add('custom');
-    } else {
-        preview.style.width = '';
-        preview.classList.add(type);
-    }
+        p.style.width = Math.max(200, Math.min(1920, w)) + 'px';
+        p.classList.add('custom');
+    } else { p.style.width = ''; p.classList.add(type); }
     document.getElementById('btn-mobile').classList.toggle('active', type === 'mobile');
     document.getElementById('btn-desktop').classList.toggle('active', type === 'desktop');
 }
 
 // 元素選擇
 document.getElementById('elementSelector').addEventListener('click', e => {
-    const btn = e.target.closest('button');
-    if (!btn) return;
+    const btn = e.target.closest('button'); if (!btn) return;
     document.querySelectorAll('#elementSelector button').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     activeEl = btn.dataset.target;
@@ -433,39 +254,49 @@ function highlightElement(name) {
     if (el) el.classList.add('active');
 }
 
+function hasTextContent(name) {
+    return ['history-btn', 'faq-btn', 'text-input', 'push-to-talk'].includes(name);
+}
+
 function updateSliders() {
     const el = document.querySelector(`[data-name="${activeEl}"]`);
     if (!el) return;
-    const s = el.style;
-    const computed = getComputedStyle(el);
-    const setSlider = (id, val, suffix) => {
-        document.getElementById('v-' + id).textContent = val || '—';
-    };
-    setSlider('top', s.top);
-    setSlider('bottom', s.bottom);
-    setSlider('left', s.left);
-    setSlider('right', s.right);
-    const h = parseInt(computed.height) || 0;
-    document.getElementById('s-height').value = h;
+    const s = el.style, c = getComputedStyle(el);
+    const sv = (id, val) => { document.getElementById('v-' + id).textContent = val || '—'; };
+    sv('top', s.top); sv('bottom', s.bottom); sv('left', s.left); sv('right', s.right);
+    const h = parseInt(c.height) || 0;
+    document.getElementById('s-height').value = Math.min(900, h);
     document.getElementById('v-height').textContent = h ? h + 'px' : '—';
-    const w = parseInt(computed.width) || 0;
-    document.getElementById('s-width').value = w;
+    const w = parseInt(c.width) || 0;
+    document.getElementById('s-width').value = Math.min(1600, w);
     document.getElementById('v-width').textContent = w ? w + 'px' : '—';
-    document.getElementById('s-opacity').value = computed.opacity;
-    document.getElementById('v-opacity').textContent = computed.opacity;
+    document.getElementById('s-opacity').value = parseFloat(c.opacity);
+    document.getElementById('v-opacity').textContent = parseFloat(c.opacity).toFixed(2);
+    
+    // 字體大小行：僅對有文字的元素顯示
+    const fontSizeRow = document.getElementById('fontSizeRow');
+    if (hasTextContent(activeEl)) {
+        fontSizeRow.style.display = 'flex';
+        const textEl = el.querySelector('.btn-text, .ptt-text, input');
+        if (textEl) {
+            const fs = parseFloat(getComputedStyle(textEl).fontSize) || 13;
+            document.getElementById('s-fontsize').value = Math.min(48, Math.max(8, Math.round(fs)));
+            document.getElementById('v-fontsize').textContent = Math.round(fs) + 'px';
+        }
+    } else {
+        fontSizeRow.style.display = 'none';
+    }
 }
 
-// 滑塊
 ['top','bottom','left','right','height','width','opacity'].forEach(prop => {
     document.getElementById('s-' + prop).addEventListener('input', e => {
         const el = document.querySelector(`[data-name="${activeEl}"]`);
         if (!el) return;
         const val = e.target.value;
-        const label = prop === 'height' || prop === 'width' ? val + 'px' : (prop === 'opacity' ? val : val + '%');
-        document.getElementById('v-' + prop).textContent = label;
-        if (prop === 'opacity') { el.style.opacity = val; }
-        else if (prop === 'height') { el.style.height = val + 'px'; }
-        else if (prop === 'width') { el.style.width = val + 'px'; }
+        document.getElementById('v-' + prop).textContent = (prop === 'height' || prop === 'width') ? val + 'px' : (prop === 'opacity' ? parseFloat(val).toFixed(2) : val + '%');
+        if (prop === 'opacity') el.style.opacity = val;
+        else if (prop === 'height') el.style.height = val + 'px';
+        else if (prop === 'width') el.style.width = val + 'px';
         else {
             if (prop === 'top') el.style.bottom = '';
             if (prop === 'bottom') el.style.top = '';
@@ -477,40 +308,150 @@ function updateSliders() {
     });
 });
 
-// 拖拽
+// 字體大小滑桿
+document.getElementById('s-fontsize').addEventListener('input', e => {
+    const el = document.querySelector(`[data-name="${activeEl}"]`);
+    if (!el) return;
+    const val = e.target.value;
+    document.getElementById('v-fontsize').textContent = val + 'px';
+    const textEl = el.querySelector('.btn-text, .ptt-text');
+    if (textEl) textEl.style.fontSize = val + 'px';
+    const inputEl = el.querySelector('input');
+    if (inputEl) inputEl.style.fontSize = val + 'px';
+    generateCss();
+});
+
+// 邊緣對齊：收集所有邊緣
+function collectEdges(el) {
+    const p = document.getElementById('preview').getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    const elCx = r.left + r.width / 2 - p.left;
+    const elCy = r.top + r.height / 2 - p.top;
+    const edges = { h: [], v: [] };
+    // 頁面中線
+    edges.h.push({ pos: p.height / 2, type: 'center' });
+    edges.v.push({ pos: p.width / 2, type: 'center' });
+    // 其他元素的邊緣
+    document.querySelectorAll('.draggable').forEach(other => {
+        if (other === el) return;
+        const or = other.getBoundingClientRect();
+        const t = or.top - p.top, b = or.bottom - p.top, cy = t + (b - t) / 2;
+        const l = or.left - p.left, ri = or.right - p.left, cx = l + (ri - l) / 2;
+        edges.h.push({ pos: t, type: 'edge' }, { pos: b, type: 'edge' }, { pos: cy, type: 'edge' });
+        edges.v.push({ pos: l, type: 'edge' }, { pos: ri, type: 'edge' }, { pos: cx, type: 'edge' });
+    });
+    return { edges, r, p, elCx, elCy };
+}
+
+function showGuides(el) {
+    const { edges, r, p, elCx, elCy } = collectEdges(el);
+    // 隱藏所有動態輔助線
+    guideH1.style.display = 'none'; guideH2.style.display = 'none';
+    guideV1.style.display = 'none'; guideV2.style.display = 'none';
+    
+    const relTop = r.top - p.top, relBottom = r.bottom - p.top;
+    const relLeft = r.left - p.left, relRight = r.right - p.left;
+    const cx = relLeft + (relRight - relLeft) / 2;
+    const cy = relTop + (relBottom - relTop) / 2;
+
+    // 水平輔助線：元素的 top / center / bottom 對齊到其他邊緣
+    edges.h.forEach(e => {
+        if (Math.abs(cy - e.pos) < SNAP_THRESHOLD) {
+            guideH1.style.display = 'block'; guideH1.style.top = e.pos + 'px';
+        }
+        if (Math.abs(relTop - e.pos) < SNAP_THRESHOLD && Math.abs(cy - e.pos) >= SNAP_THRESHOLD) {
+            if (!guideH2.style.display || guideH2.style.display === 'none') {
+                guideH2.style.display = 'block'; guideH2.style.top = e.pos + 'px';
+            }
+        }
+        if (Math.abs(relBottom - e.pos) < SNAP_THRESHOLD && Math.abs(cy - e.pos) >= SNAP_THRESHOLD) {
+            if (!guideH2.style.display || guideH2.style.display === 'none') {
+                guideH2.style.display = 'block'; guideH2.style.top = e.pos + 'px';
+            }
+        }
+    });
+
+    // 垂直輔助線：元素的 left / center / right 對齊到其他邊緣
+    edges.v.forEach(e => {
+        if (Math.abs(cx - e.pos) < SNAP_THRESHOLD) {
+            guideV1.style.display = 'block'; guideV1.style.left = e.pos + 'px';
+        }
+        if (Math.abs(relLeft - e.pos) < SNAP_THRESHOLD && Math.abs(cx - e.pos) >= SNAP_THRESHOLD) {
+            if (!guideV2.style.display || guideV2.style.display === 'none') {
+                guideV2.style.display = 'block'; guideV2.style.left = e.pos + 'px';
+            }
+        }
+        if (Math.abs(relRight - e.pos) < SNAP_THRESHOLD && Math.abs(cx - e.pos) >= SNAP_THRESHOLD) {
+            if (!guideV2.style.display || guideV2.style.display === 'none') {
+                guideV2.style.display = 'block'; guideV2.style.left = e.pos + 'px';
+            }
+        }
+    });
+}
+
+function hideGuides() {
+    guideH1.style.display = 'none'; guideH2.style.display = 'none';
+    guideV1.style.display = 'none'; guideV2.style.display = 'none';
+}
+
+// 吸附計算
+function calcSnap(val, edges) {
+    let best = val, dist = SNAP_THRESHOLD + 1;
+    edges.forEach(e => {
+        const d = Math.abs(val - e.pos);
+        if (d < dist) { dist = d; best = e.pos; }
+    });
+    return { val: dist < SNAP_THRESHOLD ? best : val, snapped: dist < SNAP_THRESHOLD };
+}
+
+// 拖拽 + 縮放
 document.querySelectorAll('.draggable').forEach(el => {
     el.addEventListener('mousedown', startDrag);
     el.addEventListener('touchstart', startDrag, { passive: false });
-    const handle = el.querySelector('.resize-handle');
-    if (handle) {
-        handle.addEventListener('mousedown', startResize);
-        handle.addEventListener('touchstart', startResize, { passive: false });
-    }
+    el.querySelectorAll('.resize-handle').forEach(h => {
+        h.addEventListener('mousedown', startResize);
+        h.addEventListener('touchstart', startResize, { passive: false });
+    });
 });
 
 function startDrag(e) {
     if (e.target.classList.contains('resize-handle')) return;
-    const el = e.currentTarget;
-    e.preventDefault();
-    dragging = el;
-    activeEl = el.dataset.name;
-    highlightElement(activeEl);
-    document.querySelectorAll('#elementSelector button').forEach(b => b.classList.remove('active'));
-    const btn = document.querySelector(`[data-target="${activeEl}"]`);
-    if (btn) btn.classList.add('active');
+    const el = e.currentTarget; e.preventDefault();
+    dragging = el; activeEl = el.dataset.name;
+    highlightElement(activeEl); syncSelector();
     const rect = el.getBoundingClientRect();
     const cx = e.touches ? e.touches[0].clientX : e.clientX;
     const cy = e.touches ? e.touches[0].clientY : e.clientY;
-    dragOffset.x = cx - rect.left;
-    dragOffset.y = cy - rect.top;
+    dragOffset.x = cx - rect.left; dragOffset.y = cy - rect.top;
 }
 
 function startResize(e) {
-    e.preventDefault();
-    e.stopPropagation();
+    e.preventDefault(); e.stopPropagation();
     resizing = e.currentTarget.parentElement;
+    // 找到被點擊的handle的class
+    const cls = e.target.className;
+    resizeDir = '';
+    ['nw','n','ne','w','e','sw','s','se'].forEach(d => {
+        if (cls.includes(d)) resizeDir = d;
+    });
     activeEl = resizing.dataset.name;
-    highlightElement(activeEl);
+    highlightElement(activeEl); syncSelector();
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    const cy = e.touches ? e.touches[0].clientY : e.clientY;
+    const r = resizing.getBoundingClientRect();
+    resizeStart = {
+        x: cx, y: cy,
+        left: r.left, top: r.top, width: r.width, height: r.height,
+        styleLeft: resizing.style.left, styleTop: resizing.style.top,
+        styleWidth: resizing.style.width, styleHeight: resizing.style.height,
+        styleRight: resizing.style.right, styleBottom: resizing.style.bottom
+    };
+}
+
+function syncSelector() {
+    document.querySelectorAll('#elementSelector button').forEach(b => b.classList.remove('active'));
+    const btn = document.querySelector(`[data-target="${activeEl}"]`);
+    if (btn) btn.classList.add('active');
 }
 
 document.addEventListener('mousemove', onMove);
@@ -519,40 +460,84 @@ document.addEventListener('touchmove', onMove, { passive: false });
 function onMove(e) {
     if (dragging) {
         e.preventDefault();
-        const preview = document.getElementById('preview').getBoundingClientRect();
+        const p = document.getElementById('preview').getBoundingClientRect();
         const cx = e.touches ? e.touches[0].clientX : e.clientX;
         const cy = e.touches ? e.touches[0].clientY : e.clientY;
-        const x = cx - preview.left - dragOffset.x;
-        const y = cy - preview.top - dragOffset.y;
-        const xPct = (x / preview.width * 100).toFixed(1);
-        const yPct = (y / preview.height * 100).toFixed(1);
-        if (y < preview.height / 2) { dragging.style.top = yPct + '%'; dragging.style.bottom = ''; }
+        let x = cx - p.left - dragOffset.x;
+        let y = cy - p.top - dragOffset.y;
+        
+        // 計算元素中心和邊緣
+        const dr = dragging.getBoundingClientRect();
+        const elW = dr.width, elH = dr.height;
+        const elCx = x + elW / 2, elCy = y + elH / 2;
+        
+        // 收集所有邊緣用於吸附
+        const { edges } = collectEdges(dragging);
+        
+        // 吸附中心
+        const snapH = calcSnap(elCy, edges.h);
+        if (snapH.snapped) y = snapH.val - elH / 2;
+        const snapV = calcSnap(elCx, edges.v);
+        if (snapV.snapped) x = snapV.val - elW / 2;
+        
+        // 吸附頂邊/底邊
+        const snapTop = calcSnap(y, edges.h);
+        if (snapTop.snapped) y = snapTop.val;
+        const snapBot = calcSnap(y + elH, edges.h);
+        if (snapBot.snapped) y = snapBot.val - elH;
+        
+        // 吸附左邊/右邊
+        const snapLeft = calcSnap(x, edges.v);
+        if (snapLeft.snapped) x = snapLeft.val;
+        const snapRight = calcSnap(x + elW, edges.v);
+        if (snapRight.snapped) x = snapRight.val - elW;
+
+        const xPct = (x / p.width * 100).toFixed(1);
+        const yPct = (y / p.height * 100).toFixed(1);
+        if (y < p.height / 2) { dragging.style.top = yPct + '%'; dragging.style.bottom = ''; }
         else { dragging.style.bottom = (100 - parseFloat(yPct)) + '%'; dragging.style.top = ''; }
-        if (x < preview.width / 2) { dragging.style.left = xPct + '%'; dragging.style.right = ''; }
+        if (x < p.width / 2) { dragging.style.left = xPct + '%'; dragging.style.right = ''; }
         else { dragging.style.right = (100 - parseFloat(xPct)) + '%'; dragging.style.left = ''; }
+        
+        showGuides(dragging);
         generateCss();
     }
     if (resizing) {
         e.preventDefault();
         const cx = e.touches ? e.touches[0].clientX : e.clientX;
         const cy = e.touches ? e.touches[0].clientY : e.clientY;
-        const rect = resizing.getBoundingClientRect();
-        const w = Math.max(30, cx - rect.left);
-        const h = Math.max(30, cy - rect.top);
-        resizing.style.width = w + 'px';
-        resizing.style.height = h + 'px';
-        // 如果是 img 容器，同步更新 img
+        const dx = cx - resizeStart.x, dy = cy - resizeStart.y;
+        const s = resizeStart;
+        let newL = s.left, newT = s.top, newW = s.width, newH = s.height;
+
+        if (resizeDir.includes('e')) newW = Math.max(30, s.width + dx);
+        if (resizeDir.includes('w')) { newW = Math.max(30, s.width - dx); newL = s.left + s.width - newW; }
+        if (resizeDir.includes('s')) newH = Math.max(20, s.height + dy);
+        if (resizeDir.includes('n')) { newH = Math.max(20, s.height - dy); newT = s.top + s.height - newH; }
+
+        const p = document.getElementById('preview').getBoundingClientRect();
+        resizing.style.left = (newL - p.left) + 'px';
+        resizing.style.top = (newT - p.top) + 'px';
+        resizing.style.right = '';
+        resizing.style.bottom = '';
+        resizing.style.width = newW + 'px';
+        resizing.style.height = newH + 'px';
+
+        // 內部圖片跟隨容器大小
         const img = resizing.querySelector('img');
-        if (img) { img.style.height = '100%'; img.style.width = '100%'; }
+        if (img) { img.style.width = '100%'; img.style.height = '100%'; }
+        // 內部背景跟隨
+        const bgInner = resizing.querySelector('.bg-inner');
+        if (bgInner) { /* bg-inner already 100% via CSS */ }
+
+        showGuides(resizing);
         generateCss();
     }
 }
 
-document.addEventListener('mouseup', endInteraction);
-document.addEventListener('touchend', endInteraction);
-function endInteraction() { if (dragging) updateSliders(); dragging = null; resizing = null; }
+document.addEventListener('mouseup', () => { if (dragging || resizing) updateSliders(); dragging = null; resizing = null; hideGuides(); });
+document.addEventListener('touchend', () => { if (dragging || resizing) updateSliders(); dragging = null; resizing = null; hideGuides(); });
 
-// CSS 生成
 function generateCss() {
     const targets = {
         'bg-image': '.bg-image',
@@ -576,6 +561,30 @@ function generateCss() {
         if (s.height) rules.push(`    height: ${s.height};`);
         if (s.width) rules.push(`    width: ${s.width};`);
         if (s.opacity && s.opacity !== '1') rules.push(`    opacity: ${s.opacity};`);
+        
+        // 文字大小
+        if (name === 'history-btn' || name === 'faq-btn') {
+            const btnText = el.querySelector('.btn-text');
+            if (btnText && btnText.style.fontSize) {
+                rules.push(`    font-size: ${btnText.style.fontSize};`);
+            }
+        }
+        if (name === 'push-to-talk') {
+            const pttText = el.querySelector('.ptt-text');
+            if (pttText && pttText.style.fontSize) {
+                // 需要單獨的規則
+                rules.push(`    /* .push-to-talk-text */`);
+                rules.push(`    /* font-size: ${pttText.style.fontSize}; */`);
+            }
+        }
+        if (name === 'text-input') {
+            const input = el.querySelector('input');
+            if (input && input.style.fontSize) {
+                rules.push(`    /* .text-input-box */`);
+                rules.push(`    /* font-size: ${input.style.fontSize}; */`);
+            }
+        }
+        
         if (rules.length) css += `${cls} {\n${rules.join('\n')}\n}\n\n`;
     }
     document.getElementById('cssOutput').value = css;
@@ -583,15 +592,14 @@ function generateCss() {
 
 function copyCss() {
     navigator.clipboard.writeText(document.getElementById('cssOutput').value).then(() => {
-        const t = document.getElementById('toast');
-        t.classList.add('show');
+        const t = document.getElementById('toast'); t.classList.add('show');
         setTimeout(() => t.classList.remove('show'), 1500);
     });
 }
 
 function resetAll() { if (confirm('確定重置？')) location.reload(); }
 
-// 初始化：给 logo 元素设置初始 height
+// 初始化
 generateCss();
 highlightElement('bg-image');
 updateSliders();

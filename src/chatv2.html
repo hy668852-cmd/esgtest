@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>XiaoZhi WebRTC</title>
+    <title>ESGA智能客服系統</title>
     <link rel="icon" type="image/x-icon" href="static/favicon.ico">
     <link rel="manifest" href="/static/manifest.webmanifest">
     <meta name="theme-color" content="#f1e6aa">
@@ -61,10 +61,10 @@
         }
         .bg-image {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 1.9%;
+            left: 2.1%;
+            height: 791.984px;
+            width: 412.141px;
             background-image: url('/static/images/goody_bg.png');
             background-size: contain;
             background-position: left center;
@@ -73,22 +73,22 @@
         }
         .logo-image {
             position: absolute;
-            top: 6%;
-            right: 3%;
-            width: auto;
-            height: 28vh;
-            max-height: 220px;
+            top: 0.8%;
+            right: 3.6%;
+            height: 248px;
+            width: 423.172px;
+            max-height: none;
             object-fit: contain;
             pointer-events: none;
             filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15));
         }
         .esga-logo-image {
             position: absolute;
-            top: calc(6% + 28vh + 10px);
-            right: 5%;
-            width: auto;
-            height: 22vh;
-            max-height: 170px;
+            top: 30.6%;
+            left: 25.6%;
+            height: 262.547px;
+            width: 1504px;
+            max-height: none;
             object-fit: contain;
             pointer-events: none;
             filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15));
@@ -300,8 +300,10 @@
         /* 歷史對話按鈕 */
         .history-btn {
             position: fixed;
-            top: 15px;
-            left: 15px;
+            top: 3%;
+            left: 3.8%;
+            height: 46.8281px;
+            width: 118.016px;
             z-index: 1100;
             background: rgba(255, 255, 255, 0.92);
             border: none;
@@ -409,8 +411,10 @@
         /* 常見問題按鈕 */
         .faq-btn {
             position: fixed;
-            top: 15px;
-            left: calc(15px + 130px);
+            top: 3%;
+            left: 13.5%;
+            height: 47.2812px;
+            width: 118.25px;
             z-index: 1100;
             background: rgba(255, 255, 255, 0.92);
             border: none;
@@ -773,8 +777,10 @@
         /* 按住说话按钮样式 */
         .push-to-talk-container {
             position: fixed;
-            bottom: 6%;
-            right: 6%;
+            bottom: 19.3%;
+            right: 20.6%;
+            height: 72.9688px;
+            width: 194.938px;
             z-index: 2005;
             pointer-events: auto;
         }
@@ -833,8 +839,10 @@
         /* 文字输入区域 */
         .text-input-container {
             position: fixed;
-            bottom: 8%;
-            left: 5%;
+            bottom: 17.8%;
+            left: 34.3%;
+            height: 30px;
+            width: 370px;
             z-index: 2005;
             display: flex;
             align-items: center;
@@ -877,10 +885,40 @@
         .text-send-btn svg { width: 18px; height: 18px; }
         .text-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
         @media (max-width: 768px) {
+            .bg-image {
+                top: 6.8%;
+                left: 1%;
+                height: 725.719px;
+                width: 347.641px;
+            }
+            .logo-image {
+                top: 3.8%;
+                left: 3.4%;
+                right: auto;
+                height: 233.859px;
+                width: 243.359px;
+            }
+            .esga-logo-image {
+                top: 7.9%;
+                right: -3.9%;
+                left: auto;
+                height: auto;
+                width: auto;
+                max-height: 120px;
+            }
+            .history-btn {
+                top: 3.3%;
+                left: 3.8%;
+            }
+            .faq-btn {
+                top: 3.3%;
+                left: 34%;
+            }
             .text-input-container {
-                bottom: 10%;
-                left: 3%;
-                width: 240px;
+                bottom: 6.5%;
+                left: 18.6%;
+                height: 58.7969px;
+                width: 262.078px;
                 max-width: 55vw;
             }
             .text-input-box { font-size: 13px; padding: 8px 14px; }
@@ -889,8 +927,9 @@
         /* 移动端按住说话按钮样式调整 */
         @media (max-width: 768px) {
             .push-to-talk-container {
-                bottom: 10%;
-                right: 3%;
+                bottom: 14.6%;
+                left: 38.2%;
+                right: auto;
             }
 
             .push-to-talk-btn {
