@@ -73,22 +73,22 @@
         }
         .logo-image {
             position: absolute;
-            top: 8%;
-            right: 4%;
+            top: 6%;
+            right: 3%;
             width: auto;
-            height: 22vh;
-            max-height: 180px;
+            height: 28vh;
+            max-height: 220px;
             object-fit: contain;
             pointer-events: none;
             filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15));
         }
         .esga-logo-image {
             position: absolute;
-            top: calc(8% + 22vh + 15px);
-            right: 4%;
+            top: calc(6% + 28vh + 10px);
+            right: 5%;
             width: auto;
-            height: 18vh;
-            max-height: 150px;
+            height: 22vh;
+            max-height: 170px;
             object-fit: contain;
             pointer-events: none;
             filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15));
@@ -773,15 +773,15 @@
         /* 按住说话按钮样式 */
         .push-to-talk-container {
             position: fixed;
-            bottom: 12%;
-            right: 8%;
+            bottom: 6%;
+            right: 6%;
             z-index: 2005;
             pointer-events: auto;
         }
 
         .push-to-talk-btn {
-            width: 100px;
-            height: 100px;
+            width: 90px;
+            height: 90px;
             border-radius: 50%;
             background: rgba(0, 0, 0, 0.8);
             color: #fff;
@@ -833,15 +833,15 @@
         /* 文字输入区域 */
         .text-input-container {
             position: fixed;
-            bottom: 14%;
-            left: 8%;
+            bottom: 8%;
+            left: 5%;
             z-index: 2005;
             display: flex;
             align-items: center;
             gap: 8px;
             pointer-events: auto;
-            width: 340px;
-            max-width: 55vw;
+            width: 320px;
+            max-width: 50vw;
         }
         .text-input-box {
             flex: 1;
@@ -878,10 +878,10 @@
         .text-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
         @media (max-width: 768px) {
             .text-input-container {
-                bottom: 16%;
-                left: 5%;
-                width: 260px;
-                max-width: 60vw;
+                bottom: 10%;
+                left: 3%;
+                width: 240px;
+                max-width: 55vw;
             }
             .text-input-box { font-size: 13px; padding: 8px 14px; }
         }
@@ -889,8 +889,8 @@
         /* 移动端按住说话按钮样式调整 */
         @media (max-width: 768px) {
             .push-to-talk-container {
-                bottom: 16%;
-                right: 5%;
+                bottom: 10%;
+                right: 3%;
             }
 
             .push-to-talk-btn {
