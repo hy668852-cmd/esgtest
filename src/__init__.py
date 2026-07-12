@@ -135,8 +135,8 @@ async def server(pc, offer):
                         # 2. 清空输出音频队列
                         xiaozhi.server.output_audio_queue.clear()
 
-                        # 短文本直接用detect发送（唤醒词模式）
-                        if len(text_content) <= 20:
+                        # 短文本直接用detect发送（唤醒词模式，阈值10个字符）
+                        if len(text_content) <= 10:
                             await xiaozhi.server.send_wake_word(text_content)
                             await asyncio.sleep(0.1)
                             await xiaozhi.server.send_silence_audio(1.5)
@@ -152,7 +152,7 @@ async def server(pc, offer):
                                 import subprocess, tempfile, wave, os
                                 wav_path = tempfile.mktemp(suffix='.wav')
                                 proc = await asyncio.create_subprocess_exec(
-                                    'edge-tts', '--voice', 'zh-HK-HiuGaaiNeural',
+                                    'edge-tts', '--voice', 'zh-CN-XiaoxiaoNeural',
                                     '--text', text_content, '--write-media', wav_path,
                                     stdout=asyncio.subprocess.PIPE,
                                     stderr=asyncio.subprocess.PIPE
@@ -172,7 +172,7 @@ async def server(pc, offer):
                                 logger.info("长文本TTS音频发送完成 [%s]", pc.mac_address)
                             except Exception as tts_err:
                                 logger.warning("TTS失败，兜底发送短唤醒词: %s", tts_err)
-                                await xiaozhi.server.send_wake_word(text_content[:20])
+                                await xiaozhi.server.send_wake_word(text_content[:10])
                             await asyncio.sleep(0.1)
                             await xiaozhi.server.send_silence_audio(1.5)
                             await xiaozhi.server.websocket.send(_json.dumps({
