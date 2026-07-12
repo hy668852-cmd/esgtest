@@ -125,15 +125,22 @@ async def server(pc, offer):
             if message.get("type") == "text-input":
                 text_content = message.get("text", "")
                 if text_content:
-                    logger.info("收到文字输入 [%s]: %s", pc.mac_address, text_content)
+                    logger.info("收到文字输入 [%s] (长度:%d): %s", pc.mac_address, len(text_content), text_content[:50])
                     # 先中断当前对话，确保新消息能被处理
                     try:
                         await xiaozhi.server.send_abort()
                         import asyncio
-                        await asyncio.sleep(0.3)
+                        await asyncio.sleep(0.5)
                     except Exception:
                         pass
+                    # 发送文本（作为唤醒词/用户输入）
                     await xiaozhi.server.send_wake_word(text_content)
+                    # 发送静音音频，模拟用户说完后的停顿，触发AI回复
+                    try:
+                        await asyncio.sleep(0.3)
+                        await xiaozhi.server.send_silence_audio(1.5)
+                    except Exception as e:
+                        logger.warning("发送静音音频失败: %s", e)
                 return
 
             if xiaozhi.server.output_audio_queue:
