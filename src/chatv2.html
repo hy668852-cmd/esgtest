@@ -1058,7 +1058,7 @@
                                     <div v-for="(q, qi) in cat.questions" :key="qi" 
                                          class="faq-question"
                                          @click="sendFaqQuestion(q)">
-                                        <span style="color:#2e7d32;font-weight:700;margin-right:4px;">{{ ['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩'][qi] || (qi+1) }}.</span>{{ s2t(q) }}
+                                        <span style="color:#2e7d32;font-weight:700;margin-right:4px;">{{ qi + 1 }}.</span>{{ s2t(q) }}
                                     </div>
                                 </div>
                                 <div v-else class="faq-question-empty">無</div>
@@ -1418,11 +1418,20 @@
             methods: {
                 sendTextMessage() {
                     const text = this.textInput.trim();
-                    if (!text || !this.dataChannel) return;
+                    if (!text) return;
                     // 添加用户消息到聊天记录
                     this.messages.push({ role: 'user', content: text });
                     // 通过dataChannel发送文字消息
-                    this.dataChannel.send(JSON.stringify({ type: 'text-input', text: text }));
+                    try {
+                        if (this.dataChannel && this.dataChannel.readyState === 'open') {
+                            this.dataChannel.send(JSON.stringify({ type: 'text-input', text: text }));
+                            console.log('文字消息已发送:', text);
+                        } else {
+                            console.warn('DataChannel 未就绪，无法发送文字消息');
+                        }
+                    } catch(e) {
+                        console.error('发送文字消息失败:', e);
+                    }
                     this.textInput = '';
                 },
                 toggleFaqCategory(idx) {
@@ -1431,9 +1440,9 @@
                 sendFaqQuestion(question) {
                     this.showFaq = false;
                     this.faqOpenIdx = -1;
-                    // 设置文字输入框的内容并发送
+                    // 复制到文本框并延迟发送，确保DOM和状态都就绪
                     this.textInput = question;
-                    this.$nextTick(() => { this.sendTextMessage(); });
+                    setTimeout(() => { this.sendTextMessage(); }, 300);
                 },
                 startFaqDrag(e) {
                     if (e.target.closest('.faq-modal-header') || e.target.closest('.faq-modal-body')) return;
