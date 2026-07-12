@@ -73,12 +73,22 @@
         }
         .logo-image {
             position: absolute;
-            top: 50%;
-            right: 5%;
-            transform: translateY(-50%);
+            top: 8%;
+            right: 4%;
             width: auto;
-            height: 40vh;
-            max-height: 350px;
+            height: 22vh;
+            max-height: 180px;
+            object-fit: contain;
+            pointer-events: none;
+            filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15));
+        }
+        .esga-logo-image {
+            position: absolute;
+            top: calc(8% + 22vh + 15px);
+            right: 4%;
+            width: auto;
+            height: 18vh;
+            max-height: 150px;
             object-fit: contain;
             pointer-events: none;
             filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15));
@@ -399,8 +409,8 @@
         /* 常見問題按鈕 */
         .faq-btn {
             position: fixed;
-            top: 55px;
-            left: 15px;
+            top: 15px;
+            left: calc(15px + 130px);
             z-index: 1100;
             background: rgba(255, 255, 255, 0.92);
             border: none;
@@ -763,16 +773,15 @@
         /* 按住说话按钮样式 */
         .push-to-talk-container {
             position: fixed;
-            bottom: 15%;
-            left: 50%;
-            transform: translateX(-50%);
+            bottom: 12%;
+            right: 8%;
             z-index: 2005;
             pointer-events: auto;
         }
 
         .push-to-talk-btn {
-            width: 112px;
-            height: 112px;
+            width: 100px;
+            height: 100px;
             border-radius: 50%;
             background: rgba(0, 0, 0, 0.8);
             color: #fff;
@@ -824,16 +833,15 @@
         /* 文字输入区域 */
         .text-input-container {
             position: fixed;
-            bottom: calc(15% - 70px);
-            left: 50%;
-            transform: translateX(-50%);
+            bottom: 14%;
+            left: 8%;
             z-index: 2005;
             display: flex;
             align-items: center;
             gap: 8px;
             pointer-events: auto;
             width: 340px;
-            max-width: 90vw;
+            max-width: 55vw;
         }
         .text-input-box {
             flex: 1;
@@ -870,8 +878,10 @@
         .text-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
         @media (max-width: 768px) {
             .text-input-container {
-                bottom: calc(18% - 65px);
-                width: 300px;
+                bottom: 16%;
+                left: 5%;
+                width: 260px;
+                max-width: 60vw;
             }
             .text-input-box { font-size: 13px; padding: 8px 14px; }
         }
@@ -879,7 +889,8 @@
         /* 移动端按住说话按钮样式调整 */
         @media (max-width: 768px) {
             .push-to-talk-container {
-                bottom: 18%;
+                bottom: 16%;
+                right: 5%;
             }
 
             .push-to-talk-btn {
@@ -907,6 +918,7 @@
             <div class="chat-container">
                 <div class="bg-image"></div>
                 <img class="logo-image" src="/static/images/sdg_logo.png" alt="SDG Logo">
+                <img class="esga-logo-image" src="/static/images/esga_logo.png" alt="ESGA Logo">
                 <div class="loading-overlay" v-if="isLoadingOffer">
                     <div class="loading-box">
                         <div class="spinner"></div>
