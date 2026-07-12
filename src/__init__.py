@@ -125,22 +125,25 @@ async def server(pc, offer):
             if message.get("type") == "text-input":
                 text_content = message.get("text", "")
                 if text_content:
-                    logger.info("收到文字输入 [%s] (长度:%d): %s", pc.mac_address, len(text_content), text_content[:50])
-                    # 先中断当前对话，确保新消息能被处理
+                    logger.info("收到文字输入 [%s] (长度:%d): %s", pc.mac_address, len(text_content), text_content[:80])
+                    import asyncio
+                    import json as _json
                     try:
+                        # 1. 中断当前对话
                         await xiaozhi.server.send_abort()
-                        import asyncio
-                        await asyncio.sleep(0.5)
-                    except Exception:
-                        pass
-                    # 发送文本（作为唤醒词/用户输入）
-                    await xiaozhi.server.send_wake_word(text_content)
-                    # 发送静音音频，模拟用户说完后的停顿，触发AI回复
-                    try:
                         await asyncio.sleep(0.3)
+                        # 2. 重新开始监听（与SDK _start_listen一致）
+                        listen_msg = _json.dumps({"session_id": xiaozhi.server.session_id, "type": "listen", "state": "start", "mode": "realtime"})
+                        await xiaozhi.server.websocket.send(listen_msg)
+                        await asyncio.sleep(0.2)
+                        # 3. 发送文本作为唤醒词检测
+                        await xiaozhi.server.send_wake_word(text_content)
+                        await asyncio.sleep(0.2)
+                        # 4. 发送静音音频模拟用户说完话的停顿，触发AI回复
                         await xiaozhi.server.send_silence_audio(1.5)
+                        logger.info("文字输入发送完成 [%s]", pc.mac_address)
                     except Exception as e:
-                        logger.warning("发送静音音频失败: %s", e)
+                        logger.error("文字输入处理失败: %s", e)
                 return
 
             if xiaozhi.server.output_audio_queue:
