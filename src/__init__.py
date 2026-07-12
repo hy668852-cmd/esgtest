@@ -127,15 +127,59 @@ async def server(pc, offer):
                 if text_content:
                     logger.info("收到文字输入 [%s] (长度:%d): %s", pc.mac_address, len(text_content), text_content[:80])
                     import asyncio
+                    import json as _json
                     try:
                         # 1. 中断当前对话
                         await xiaozhi.server.send_abort()
                         await asyncio.sleep(0.3)
-                        # 2. 清空输出音频队列，防止阻塞
+                        # 2. 清空输出音频队列
                         xiaozhi.server.output_audio_queue.clear()
-                        # 3. 发送文本（与xiaozhi-client的send_txt_message一致）
-                        await xiaozhi.server.send_wake_word(text_content)
-                        logger.info("文字输入发送完成 [%s]", pc.mac_address)
+
+                        # 短文本直接用detect发送（唤醒词模式）
+                        if len(text_content) <= 20:
+                            await xiaozhi.server.send_wake_word(text_content)
+                            await asyncio.sleep(0.1)
+                            await xiaozhi.server.send_silence_audio(1.5)
+                            logger.info("短文本发送完成 [%s]", pc.mac_address)
+                        else:
+                            # 长文本：用TTS转语音后通过音频通道发送
+                            await xiaozhi.server.websocket.send(_json.dumps({
+                                "session_id": xiaozhi.server.session_id,
+                                "type": "listen", "state": "start", "mode": "manual"
+                            }))
+                            await asyncio.sleep(0.3)
+                            try:
+                                import subprocess, tempfile, wave, os
+                                wav_path = tempfile.mktemp(suffix='.wav')
+                                proc = await asyncio.create_subprocess_exec(
+                                    'edge-tts', '--voice', 'zh-HK-HiuGaaiNeural',
+                                    '--text', text_content, '--write-media', wav_path,
+                                    stdout=asyncio.subprocess.PIPE,
+                                    stderr=asyncio.subprocess.PIPE
+                                )
+                                await proc.communicate()
+                                if proc.returncode != 0:
+                                    raise Exception("edge-tts failed")
+                                with wave.open(wav_path, 'rb') as wf:
+                                    sample_rate = wf.getframerate()
+                                    frame_duration = xiaozhi.server.audio_opus.input_frame_duration
+                                    frame_size = int(sample_rate * frame_duration / 1000)
+                                    pcm_data = wf.readframes(frame_size)
+                                    while pcm_data:
+                                        await xiaozhi.server.send_audio(pcm_data)
+                                        pcm_data = wf.readframes(frame_size)
+                                os.remove(wav_path)
+                                logger.info("长文本TTS音频发送完成 [%s]", pc.mac_address)
+                            except Exception as tts_err:
+                                logger.warning("TTS失败，兜底发送短唤醒词: %s", tts_err)
+                                await xiaozhi.server.send_wake_word(text_content[:20])
+                            await asyncio.sleep(0.1)
+                            await xiaozhi.server.send_silence_audio(1.5)
+                            await xiaozhi.server.websocket.send(_json.dumps({
+                                "session_id": xiaozhi.server.session_id,
+                                "type": "listen", "state": "stop"
+                            }))
+                            logger.info("长文本流程完成 [%s]", pc.mac_address)
                     except Exception as e:
                         logger.error("文字输入处理失败: %s", e)
                 return

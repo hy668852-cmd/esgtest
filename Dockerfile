@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-RUN pip install uv
+RUN pip install uv && pip install edge-tts
 
 COPY ./pyproject.toml ./pyproject.toml
 
