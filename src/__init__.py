@@ -162,11 +162,10 @@ async def server(pc, offer):
                                 await proc.communicate()
                                 if proc.returncode != 0:
                                     raise Exception("edge-tts failed")
-                                # ffmpeg转码：mp3 -> 24kHz mono 16bit wav（高质量重采样）
+                                # ffmpeg转码：mp3 -> 16kHz mono 16bit wav（直接输出xiaozhi服务端需要的采样率）
                                 ffmpeg_proc = await asyncio.create_subprocess_exec(
                                     'ffmpeg', '-y', '-i', mp3_path,
-                                    '-ar', '24000', '-ac', '1', '-sample_fmt', 's16',
-                                    '-af', 'aresample=resampler=soxr:precision=28',
+                                    '-ar', '16000', '-ac', '1', '-sample_fmt', 's16',
                                     wav_path,
                                     stdout=asyncio.subprocess.PIPE,
                                     stderr=asyncio.subprocess.PIPE
@@ -175,15 +174,19 @@ async def server(pc, offer):
                                 os.remove(mp3_path)
                                 if ffmpeg_proc.returncode != 0 or not os.path.exists(wav_path):
                                     raise Exception("ffmpeg failed")
-                                # 读取wav并发送（readframes参数是样本数，不是字节数）
-                                import wave
+                                # 直接用opus编码16kHz音频发送WebSocket二进制帧，绕过send_audio
+                                import wave, opuslib
+                                encoder = opuslib.Encoder(fs=16000, channels=1, application=opuslib.APPLICATION_VOIP)
+                                frame_size = 16000 * 60 // 1000  # 60ms = 960 samples
                                 with wave.open(wav_path, 'rb') as wf:
-                                    frame_duration = xiaozhi.server.audio_opus.input_frame_duration
-                                    frame_size = wf.getframerate() * frame_duration // 1000  # 样本数
-                                    pcm_data = wf.readframes(frame_size)
-                                    while pcm_data:
-                                        await xiaozhi.server.send_audio(pcm_data)
+                                    while True:
                                         pcm_data = wf.readframes(frame_size)
+                                        if not pcm_data:
+                                            break
+                                        if len(pcm_data) < frame_size * 2:
+                                            pcm_data = pcm_data + b'\x00' * (frame_size * 2 - len(pcm_data))
+                                        opus_data = encoder.encode(pcm_data, frame_size)
+                                        await xiaozhi.server.websocket.send(opus_data)
                                 os.remove(wav_path)
                                 logger.info("长文本TTS音频发送完成 [%s]", pc.mac_address)
                             except Exception as tts_err:
