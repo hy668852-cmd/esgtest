@@ -126,6 +126,13 @@ async def server(pc, offer):
                 text_content = message.get("text", "")
                 if text_content:
                     logger.info("收到文字输入 [%s]: %s", pc.mac_address, text_content)
+                    # 先中断当前对话，确保新消息能被处理
+                    try:
+                        await xiaozhi.server.send_abort()
+                        import asyncio
+                        await asyncio.sleep(0.3)
+                    except Exception:
+                        pass
                     await xiaozhi.server.send_wake_word(text_content)
                 return
 

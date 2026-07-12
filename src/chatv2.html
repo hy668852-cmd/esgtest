@@ -1418,20 +1418,11 @@
             methods: {
                 sendTextMessage() {
                     const text = this.textInput.trim();
-                    if (!text) return;
+                    if (!text || !this.dataChannel) return;
                     // 添加用户消息到聊天记录
                     this.messages.push({ role: 'user', content: text });
                     // 通过dataChannel发送文字消息
-                    try {
-                        if (this.dataChannel && this.dataChannel.readyState === 'open') {
-                            this.dataChannel.send(JSON.stringify({ type: 'text-input', text: text }));
-                            console.log('文字消息已发送:', text);
-                        } else {
-                            console.warn('DataChannel 未就绪，无法发送文字消息');
-                        }
-                    } catch(e) {
-                        console.error('发送文字消息失败:', e);
-                    }
+                    this.dataChannel.send(JSON.stringify({ type: 'text-input', text: text }));
                     this.textInput = '';
                 },
                 toggleFaqCategory(idx) {
