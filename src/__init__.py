@@ -149,47 +149,41 @@ async def server(pc, offer):
                             }))
                             await asyncio.sleep(0.3)
                             try:
-                                import subprocess, tempfile, wave, os, struct
+                                import subprocess, tempfile, os
+                                # edge-tts输出mp3，再用ffmpeg转为24kHz单声道16bit wav
+                                mp3_path = tempfile.mktemp(suffix='.mp3')
                                 wav_path = tempfile.mktemp(suffix='.wav')
                                 proc = await asyncio.create_subprocess_exec(
                                     'edge-tts', '--voice', 'zh-CN-XiaoxiaoNeural',
-                                    '--text', text_content, '--write-media', wav_path,
+                                    '--text', text_content, '--write-media', mp3_path,
                                     stdout=asyncio.subprocess.PIPE,
                                     stderr=asyncio.subprocess.PIPE
                                 )
                                 await proc.communicate()
                                 if proc.returncode != 0:
                                     raise Exception("edge-tts failed")
+                                # ffmpeg转码：48kHz stereo mp3 -> 24kHz mono 16bit wav
+                                ffmpeg_proc = await asyncio.create_subprocess_exec(
+                                    'ffmpeg', '-y', '-i', mp3_path,
+                                    '-ar', '24000', '-ac', '1', '-sample_fmt', 's16',
+                                    wav_path,
+                                    stdout=asyncio.subprocess.PIPE,
+                                    stderr=asyncio.subprocess.PIPE
+                                )
+                                await ffmpeg_proc.communicate()
+                                os.remove(mp3_path)
+                                if ffmpeg_proc.returncode != 0 or not os.path.exists(wav_path):
+                                    raise Exception("ffmpeg failed")
+                                # 读取wav并发送
+                                import wave
                                 with wave.open(wav_path, 'rb') as wf:
-                                    src_rate = wf.getframerate()
-                                    src_channels = wf.getnchannels()
-                                    src_width = wf.getsampwidth()
-                                    all_frames = wf.readframes(wf.getnframes())
+                                    frame_duration = xiaozhi.server.audio_opus.input_frame_duration
+                                    frame_size = int(wf.getframerate() * frame_duration / 1000) * 2
+                                    pcm_data = wf.readframes(frame_size)
+                                    while pcm_data:
+                                        await xiaozhi.server.send_audio(pcm_data)
+                                        pcm_data = wf.readframes(frame_size)
                                 os.remove(wav_path)
-                                # SDK期望24000Hz单声道16bit PCM
-                                target_rate = xiaozhi.server.audio_opus.input_sample_rate or 24000
-                                # 先转单声道
-                                if src_channels > 1:
-                                    import array
-                                    samples = array.array('h', all_frames)
-                                    mono = array.array('h')
-                                    for i in range(0, len(samples), src_channels):
-                                        mono.append(samples[i])
-                                    all_frames = mono.tobytes()
-                                # 重采样到目标采样率
-                                if src_rate != target_rate:
-                                    import audioop
-                                    all_frames = audioop.rateconv(all_frames, src_width, src_rate, target_rate)
-                                # 按 frame_size 分帧发送
-                                frame_duration = xiaozhi.server.audio_opus.input_frame_duration
-                                frame_size = target_rate * frame_duration // 1000 * 2  # 16bit = 2 bytes
-                                offset = 0
-                                while offset < len(all_frames):
-                                    chunk = all_frames[offset:offset + frame_size]
-                                    if len(chunk) < frame_size:
-                                        chunk = chunk + b'\x00' * (frame_size - len(chunk))
-                                    await xiaozhi.server.send_audio(chunk)
-                                    offset += frame_size
                                 logger.info("长文本TTS音频发送完成 [%s]", pc.mac_address)
                             except Exception as tts_err:
                                 logger.warning("TTS失败，兜底发送短唤醒词: %s", tts_err)
