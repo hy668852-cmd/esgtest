@@ -2871,7 +2871,7 @@
                     if (this.voiceMode !== 'push-to-talk') return;
                     // 在用户手势的同步回调中尝试解锁音频
                     this.unlockAudio();
-                    this.dataChannel.send(JSON.stringify({ type: "push-to-talk", state: "start" }));
+                    try { this.dataChannel.send(JSON.stringify({ type: "push-to-talk", state: "start" })); } catch (_) {}
 
                     // 先尝试在同步手势回调中触发震动，最大化通过率
                     if (this.canVibrateNow()) {
@@ -2889,6 +2889,7 @@
 
                     this.isPushToTalkActive = false;
                     this.disableAudioTrack();
+                    try { this.dataChannel.send(JSON.stringify({ type: "push-to-talk", state: "stop" })); } catch (_) {}
 
                     console.log(this.t('stopPushToTalk'));
                 },
