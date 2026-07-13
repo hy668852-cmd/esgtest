@@ -989,8 +989,8 @@
                 </div>
             </div>
 
-            <!-- Video elements -->
-            <div>
+            <!-- Video elements（暫時隱藏攝像頭） -->
+            <div v-if="false">
                 <video ref="remoteVideo" autoplay :muted="false" playsinline style="position:absolute;width:0;height:0;opacity:0;left:-9999px;top:-9999px;"></video>
                 <video ref="localVideo"
                        v-if="hasCamera"
@@ -1233,7 +1233,7 @@
                 isLoadingOffer: false,
                 // 摄像头状态相关
                 cameraError: null,
-                hasCamera: true,
+                hasCamera: false, // 暫時禁用攝像頭
                 audioOnlyMode: false,
                 // 音频设备相关
                 audioInputDevices: [], // 可用的音频输入设备
