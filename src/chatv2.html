@@ -1021,7 +1021,7 @@
                         <path d="M16 12l3-3m0 0h-3m3 0v3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                 </div>
-
+            </div>
 
                 <!-- 按住说话按钮（固定在底部中央） -->
                 <div class="push-to-talk-container" v-if="voiceMode === 'push-to-talk'">
@@ -1074,7 +1074,6 @@
                      :style="edgeHandleStyle"
                      @click="revealFromEdge"
                      @touchend.prevent="revealFromEdge"></div>
-            </div>
 
             <!-- 顶部最后一条消息预览（当消息容器隐藏时显示） -->
             <div class="top-message-preview"
