@@ -989,9 +989,11 @@
                 </div>
             </div>
 
-            <!-- Video elements（暫時隱藏攝像頭） -->
+            <!-- remoteVideo 必須在 DOM 中，WebRTC 音頻播放依賴它 -->
+            <video ref="remoteVideo" autoplay :muted="false" playsinline style="position:absolute;width:0;height:0;opacity:0;left:-9999px;top:-9999px;"></video>
+
+            <!-- 本地攝像頭預覽（暫時禁用） -->
             <div v-if="false">
-                <video ref="remoteVideo" autoplay :muted="false" playsinline style="position:absolute;width:0;height:0;opacity:0;left:-9999px;top:-9999px;"></video>
                 <video ref="localVideo"
                        v-if="hasCamera"
                        class="local-preview"
